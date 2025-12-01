@@ -39,12 +39,12 @@ export class MerchantService {
             full_name: data.fullName,           // ✅ ADDED
             mobile_number: data.phone,          // ✅ ADDED
             email: data.email,
-            business_name: data.businessName,
+            business_name: data.business_name,
             onboarding_status: 'draft',
             created_at: now,
             updated_at: now,
             // Legacy/optional fields from data
-            businessName: data.businessName,
+           
             businessType: data.businessType,
             registrationNumber: data.registrationNumber,
             taxId: data.taxId,
@@ -64,7 +64,7 @@ export class MerchantService {
         logger.info('Merchant profile created', {
             merchantId,
             user_id,
-            businessName: data.businessName
+            businessName: data.business_name
         });
 
         return merchant;

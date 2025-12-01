@@ -188,7 +188,7 @@ export const verifyBankToken = (
         ) as DecodedToken;
 
         req.bankUser = {
-            user_id: decoded.userId,
+            user_id: decoded.user_id,
             email: decoded.email,
             role: decoded.role,
             bankStaffId: decoded.bankStaffId

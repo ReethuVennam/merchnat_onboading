@@ -25,8 +25,7 @@ export interface MerchantProfile {
     agreement_signature?: string;
 
     // Legacy/existing business fields (camelCase - for compatibility)
-    user_id?: string; // Alias for user_id
-    business_name?: string; // Alias for business_name
+    
     businessType?: string;
     registrationNumber?: string;
     taxId?: string;
@@ -97,7 +96,7 @@ export type onboarding_status =
     | 'validation_failed'
     | 'bank_rejected'
     | 'verified';
-
+export type OnboardingStatus = onboarding_status;
 // Merchant submission data
 export interface MerchantSubmission {
     fullName: string;

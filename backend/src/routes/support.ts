@@ -183,7 +183,7 @@ export const verifySupportToken = (
         const validRoles = ["support_admin", "support_staff"];
         if (!validRoles.includes(decoded.role)) {
             logger.warn("❌ Invalid role in token:", {
-                user_id: decoded.userId,
+                user_id: decoded.user_id,
                 role: decoded.role
             });
             res.status(403).json({
@@ -194,12 +194,12 @@ export const verifySupportToken = (
         }
 
         logger.info("✅ Token verified:", {
-            user_id: decoded.userId,
+            user_id: decoded.user_id,
             role: decoded.role
         });
 
         req.supportUser = {
-            user_id: decoded.userId,
+            user_id: decoded.user_id,
             email: decoded.email,
             role: decoded.role,
             firstName: decoded.firstName || "",
