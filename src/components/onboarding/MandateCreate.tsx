@@ -20,7 +20,8 @@ const MandateCreate: React.FC<MandateCreateProps> = ({
   user,
   refetchMerchant,
 }) => {
-  const [amount] = useState("4.00");
+  // ✅ CHANGED: Get amount from merchantProfile, default to "4.00" if not available
+  const [amount, setAmount] = useState("4.00");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,6 +33,20 @@ const MandateCreate: React.FC<MandateCreateProps> = ({
   const [pollIntervalId, setPollIntervalId] = useState<any>(null);
   const [nextDebitDate, setNextDebitDate] = useState("");
 
+  // ✅ NEW: Update amount when merchantProfile changes
+  useEffect(() => {
+    console.log("🔍 MandateCreate - merchantProfile changed:", merchantProfile);
+    console.log("🔍 MandateCreate - total_monthly_cost:", merchantProfile?.total_monthly_cost);
+    
+    if (merchantProfile?.total_monthly_cost) {
+      // Convert to string with 2 decimal places
+      const monthlyCost = parseFloat(merchantProfile.total_monthly_cost).toFixed(2);
+      setAmount(monthlyCost);
+      console.log("💰 Updated mandate amount from profile:", monthlyCost);
+    } else {
+      console.warn("⚠️ No total_monthly_cost found, using default 4.00");
+    }
+  }, [merchantProfile]);
 
   // Initialize dates
   useEffect(() => {
@@ -57,7 +72,6 @@ const MandateCreate: React.FC<MandateCreateProps> = ({
 
     setNextDebitDate(`${yyyy2}-${mm2}-${dd2}`);
   }, []);
-
 
   // Countdown timer
   useEffect(() => {
@@ -105,6 +119,8 @@ const MandateCreate: React.FC<MandateCreateProps> = ({
         redirecturl: "https://cams.sabbpe.com/api/v1/upimandate/cams/register/callback",
         debiturl: "https://cams.sabbpe.com/api/v1/upimandate/cams/generic/callback",
       };
+
+      console.log("📤 Creating mandate with amount:", amount);
 
       const res = await fetch("https://cams.sabbpe.com/api/v1/mandatecreate", {
         method: "POST",
@@ -204,7 +220,7 @@ const MandateCreate: React.FC<MandateCreateProps> = ({
   }, [pollIntervalId]);
 
   // =============================
-  // UI — AFTER MANDATE SUBMITTED
+  // UI – AFTER MANDATE SUBMITTED
   // =============================
   if (mandateSubmitted) {
     return (
@@ -241,28 +257,13 @@ const MandateCreate: React.FC<MandateCreateProps> = ({
               {error}
             </p>
           )}
-
-          {/* <Button
-            onClick={() => checkMandateStatus(false)}
-            disabled={checkingStatus}
-            className="w-full bg-blue-600 text-white py-5"
-          >
-            {checkingStatus ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Checking...
-              </>
-            ) : (
-              "I've Authorized the Mandate"
-            )}
-          </Button> */}
         </CardContent>
       </Card>
     );
   }
 
   // =============================
-  // UI — BEFORE MANDATE SUBMITTED
+  // UI – BEFORE MANDATE SUBMITTED
   // =============================
   return (
     <Card className="border-0 shadow-none">
@@ -282,29 +283,33 @@ const MandateCreate: React.FC<MandateCreateProps> = ({
           />
         </div>
 
-        {/* Amount */}
+        {/* Amount - ✅ NOW DYNAMIC */}
         <div>
           <label className="text-sm font-medium">Amount (₹)</label>
-          <Input value={amount} disabled className="bg-gray-100" />
+          <Input 
+            value={amount} 
+            disabled 
+            className="bg-gray-100 cursor-not-allowed" 
+          />
+          {merchantProfile?.total_monthly_cost && (
+            <p className="text-xs text-gray-500 mt-1">
+              Monthly recurring amount from your selected products
+            </p>
+          )}
         </div>
 
         {/* Start Date */}
         <div>
           <label className="text-sm font-medium">Mandate Start Date</label>
-          <Input value={startDate} disabled className="bg-gray-100" />
+          <Input value={startDate} disabled className="bg-gray-100 cursor-not-allowed" />
         </div>
 
         {/* End Date */}
         <div>
           <label className="text-sm font-medium">Mandate End Date</label>
-          <Input value={endDate} disabled className="bg-gray-100" />
+          <Input value={endDate} disabled className="bg-gray-100 cursor-not-allowed" />
         </div>
 
-        {error && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 p-3 rounded-lg">
-            {error}
-          </p>
-        )}
         {/* Next Debit Date */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700">
@@ -318,6 +323,11 @@ const MandateCreate: React.FC<MandateCreateProps> = ({
           />
         </div>
 
+        {error && (
+          <p className="text-sm text-red-600 bg-red-50 border border-red-200 p-3 rounded-lg">
+            {error}
+          </p>
+        )}
 
         <Button
           onClick={handleSubmit}
