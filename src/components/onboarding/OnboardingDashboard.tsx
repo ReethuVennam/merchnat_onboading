@@ -13,9 +13,11 @@ import {
   Upload,
   RefreshCw,
   ArrowLeft,
+  CreditCard,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { useMerchantData } from "@/hooks/useMerchantData";
+import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 
 // ⭐ IMPORT MANDATE MODAL
@@ -29,6 +31,8 @@ const OnboardingDashboard: React.FC = () => {
 
   // ⭐ MODAL STATE
   const [showMandateFlow, setShowMandateFlow] = useState(false);
+
+  const { toast } = useToast();
 
   useEffect(() => {
     console.log("🔍 Dashboard Status Check:", {
@@ -88,12 +92,12 @@ const OnboardingDashboard: React.FC = () => {
     merchantProfile?.onboarding_status === "pending_bank_approval"
       ? "verified"
       : merchantProfile?.onboarding_status === "verified"
-      ? "verified"
-      : merchantProfile?.onboarding_status === "approved"
-      ? "approved"
-      : merchantProfile?.onboarding_status === "rejected"
-      ? "rejected"
-      : "pending";
+        ? "verified"
+        : merchantProfile?.onboarding_status === "approved"
+          ? "approved"
+          : merchantProfile?.onboarding_status === "rejected"
+            ? "rejected"
+            : "pending";
 
   const applicationId =
     merchantProfile?.id?.slice(-6).toUpperCase() || "LOADING";
@@ -124,8 +128,8 @@ const OnboardingDashboard: React.FC = () => {
         upiMandateStatus === "active"
           ? "completed"
           : upiMandateStatus === "failed"
-          ? "failed"
-          : "pending",
+            ? "failed"
+            : "pending",
     },
     {
       name: "Final Review",
@@ -142,202 +146,250 @@ const OnboardingDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-accent/5">
-      <div className="container max-w-6xl mx-auto px-4 py-8">
-        <div className="mb-6">
-          <Button variant="outline" onClick={() => navigate("/")} className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Home
-          </Button>
-        </div>
+    <>
+      <style>{`
+        @keyframes blink-red {
+          0%, 100% {
+            opacity: 1;
+            border-color: #ef4444;
+            background-color: #fef2f2;
+          }
+          50% {
+            opacity: 0.6;
+            border-color: #dc2626;
+            background-color: #fee2e2;
+          }
+        }
+        
+        .blink-red-alert {
+          animation: blink-red 1.5s ease-in-out infinite !important;
+        }
+      `}</style>
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 to-accent/5">
+        <div className="container max-w-6xl mx-auto px-4 py-8">
+          <div className="mb-6">
+            <Button variant="outline" onClick={() => navigate("/")} className="gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Home
+            </Button>
+          </div>
 
-        <div className="text-center mb-8">
-          <Logo size="lg" className="mb-4" />
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Merchant Dashboard
-          </h1>
-          <p className="text-muted-foreground">
-            Track your onboarding progress and account status
-          </p>
-        </div>
+          <div className="text-center mb-8">
+            <Logo size="lg" className="mb-4" />
+            <h1 className="text-3xl font-bold text-foreground mb-2">
+              Merchant Dashboard
+            </h1>
+            <p className="text-muted-foreground">
+              Track your onboarding progress and account status
+            </p>
+          </div>
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <Card className="shadow-[var(--shadow-card)]">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Application Status</CardTitle>
-                  <Badge variant={statusInfo.badgeVariant}>
-                    {kycStatus.toUpperCase()}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-start gap-4 mb-6">
-                  <div
-                    className={`p-3 rounded-full ${statusInfo.color} text-white`}
-                  >
-                    <StatusIcon className="h-6 w-6" />
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <Card className="shadow-[var(--shadow-card)]">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Application Status</CardTitle>
+                    <Badge variant={statusInfo.badgeVariant}>
+                      {kycStatus.toUpperCase()}
+                    </Badge>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="text-xl font-semibold text-foreground mb-2">
-                      {statusInfo.title}
-                    </h3>
-                    <p className="text-muted-foreground mb-2">
-                      {statusInfo.description}
-                    </p>
-                    <p className="text-sm font-medium text-primary">
-                      {statusInfo.timeframe}
-                    </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-start gap-4 mb-6">
+                    <div
+                      className={`p-3 rounded-full ${statusInfo.color} text-white`}
+                    >
+                      <StatusIcon className="h-6 w-6" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-semibold text-foreground mb-2">
+                        {statusInfo.title}
+                      </h3>
+                      <p className="text-muted-foreground mb-2">
+                        {statusInfo.description}
+                      </p>
+                      <p className="text-sm font-medium text-primary">
+                        {statusInfo.timeframe}
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                {/* Progress steps */}
-                <div className="mt-6">
-                  <h4 className="font-semibold text-foreground mb-4">
-                    Verification Progress
-                  </h4>
-                  <div className="space-y-3">
-                    {verificationSteps.map((step, index) => (
-                      <div key={index} className="flex items-center gap-3">
-                        <div
-                          className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                            step.status === "completed"
+                  {/* Progress steps */}
+                  <div className="mt-6">
+                    <h4 className="font-semibold text-foreground mb-4">
+                      Verification Progress
+                    </h4>
+                    <div className="space-y-3">
+                      {verificationSteps.map((step, index) => (
+                        <div key={index} className="flex items-center gap-3">
+                          <div
+                            className={`w-6 h-6 rounded-full flex items-center justify-center ${step.status === "completed"
                               ? "bg-primary text-white"
                               : step.status === "failed"
-                              ? "bg-red-500 text-white"
-                              : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          {step.status === "completed" ? (
-                            <CheckCircle className="h-4 w-4" />
-                          ) : step.status === "failed" ? (
-                            <AlertCircle className="h-4 w-4" />
-                          ) : (
-                            <Clock className="h-4 w-4" />
-                          )}
+                                ? "bg-red-500 text-white"
+                                : "bg-muted text-muted-foreground"
+                              }`}
+                          >
+                            {step.status === "completed" ? (
+                              <CheckCircle className="h-4 w-4" />
+                            ) : step.status === "failed" ? (
+                              <AlertCircle className="h-4 w-4" />
+                            ) : (
+                              <Clock className="h-4 w-4" />
+                            )}
+                          </div>
+                          <span
+                            className={
+                              step.status === "completed"
+                                ? "text-foreground"
+                                : "text-muted-foreground"
+                            }
+                          >
+                            {step.name}
+                          </span>
                         </div>
-                        <span
-                          className={
-                            step.status === "completed"
-                              ? "text-foreground"
-                              : "text-muted-foreground"
-                          }
-                        >
-                          {step.name}
-                        </span>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
 
-                {/* Re-upload KYC */}
-                {kycStatus === "rejected" && (
-                  <div className="mt-6">
+                  {/* Re-upload KYC */}
+                  {kycStatus === "rejected" && (
+                    <div className="mt-6">
+                      <Button
+                        className="w-full"
+                        onClick={() => navigate("/merchant-onboarding")}
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Re-upload Documents
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* RIGHT SIDE */}
+            <div className="space-y-6">
+              {/* Show QR after ACTIVE mandate */}
+              {kycStatus === "approved" &&
+                merchantProfile?.upi_qr_string &&
+                merchantProfile?.upi_vpa && (
+                  <UPIQRCode
+                    upiString={merchantProfile.upi_qr_string}
+                    vpa={merchantProfile.upi_vpa}
+                    merchantName={merchantProfile.business_name || "Merchant"}
+                  />
+                )}
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Quick Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {/* Refresh */}
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => refetch()}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh Status
+                  </Button>
+
+                  {/* Continue onboarding */}
+                  {(kycStatus === "pending" || kycStatus === "rejected") && (
                     <Button
-                      className="w-full"
+                      variant="outline"
+                      className="w-full justify-start"
                       onClick={() => navigate("/merchant-onboarding")}
                     >
                       <Upload className="h-4 w-4 mr-2" />
-                      Re-upload Documents
+                      Continue Onboarding
                     </Button>
+                  )}
+
+                  {/* ⭐ RETRY UPI MANDATE => BLINKING RED BUTTON */}
+                  {merchantProfile?.upi_mandate_status === "failed" && (
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start border-2 border-red-500 text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-700 blink-red-alert"
+                      onClick={() => setShowMandateFlow(true)}
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Retry UPI Mandate
+                    </Button>
+                  )}
+
+                  {/* ⭐ PAY ONE TIME INTEGRATION - ONLY SHOWS IF AMOUNT > 0 */}
+                  {merchantProfile?.total_integration_cost !== undefined &&
+                    merchantProfile?.total_integration_cost !== null &&
+                    merchantProfile.total_integration_cost > 0 && (
+                      <Button
+                        variant="outline"
+                        className="w-full justify-between border-2 border-red-500 text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-700 blink-red-alert h-auto py-3"
+                        onClick={() => {
+                          // TODO: Integrate with payment gateway
+                          toast({
+                            title: "Integration Payment Required",
+                            description: `Total integration fee: ₹${merchantProfile.total_integration_cost.toLocaleString()}. Redirecting to payment gateway...`,
+                          });
+
+                          // You can add payment gateway redirect logic here
+                          // Example:
+                          // window.location.href = `/payment?amount=${merchantProfile.total_integration_cost}`;
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="h-4 w-4 flex-shrink-0" />
+                          <span className="text-left">Pay One Time Integration Fee</span>
+                        </div>
+                        <span className="font-semibold ml-2 whitespace-nowrap">
+                          ₹{merchantProfile.total_integration_cost.toLocaleString()}
+                        </span>
+                      </Button>
+                    )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Need Help?</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="text-sm text-muted-foreground mb-3">
+                    We're available 24/7 for any support queries.
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
 
-          {/* RIGHT SIDE */}
-          <div className="space-y-6">
-            {/* Show QR after ACTIVE mandate */}
-            {kycStatus === "approved" &&
-              merchantProfile?.upi_qr_string &&
-              merchantProfile?.upi_vpa && (
-                <UPIQRCode
-                  upiString={merchantProfile.upi_qr_string}
-                  vpa={merchantProfile.upi_vpa}
-                  merchantName={merchantProfile.business_name || "Merchant"}
-                />
-              )}
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {/* Refresh */}
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => refetch()}
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh Status
-                </Button>
-
-                {/* Continue onboarding */}
-                {(kycStatus === "pending" || kycStatus === "rejected") && (
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={() => navigate("/merchant-onboarding")}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Continue Onboarding
+                  <Button variant="outline" className="w-full justify-start">
+                    <Phone className="h-4 w-4 mr-2" />
+                    Call Support
                   </Button>
-                )}
 
-                {/* ⭐ RETRY UPI MANDATE => OPEN MODAL HERE */}
-                {merchantProfile?.upi_mandate_status === "failed" && (
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={() => setShowMandateFlow(true)}
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Retry UPI Mandate
+                  <Button variant="outline" className="w-full justify-start">
+                    <Mail className="h-4 w-4 mr-2" />
+                    Email Support
                   </Button>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Need Help?</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="text-sm text-muted-foreground mb-3">
-                  We're available 24/7 for any support queries.
-                </div>
-
-                <Button variant="outline" className="w-full justify-start">
-                  <Phone className="h-4 w-4 mr-2" />
-                  Call Support
-                </Button>
-
-                <Button variant="outline" className="w-full justify-start">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Email Support
-                </Button>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* ⭐ MANDATE FLOW MODAL (IMPORTANCE: HIGH) */}
-      <MandateFlowModal
-        isOpen={showMandateFlow}
-        onClose={() => setShowMandateFlow(false)}
-        onComplete={() => {
-          setShowMandateFlow(false);
-          refetch(); // refresh dashboard after mandate success
-        }}
-        merchantProfile={merchantProfile}
-        user={user}
-        refetchMerchant={refetch}
-      />
-    </div>
+        {/* ⭐ MANDATE FLOW MODAL (IMPORTANCE: HIGH) */}
+        <MandateFlowModal
+          isOpen={showMandateFlow}
+          onClose={() => setShowMandateFlow(false)}
+          onComplete={() => {
+            setShowMandateFlow(false);
+            refetch(); // refresh dashboard after mandate success
+          }}
+          merchantProfile={merchantProfile}
+          user={user}
+          refetchMerchant={refetch}
+        />
+      </div>
+    </>
   );
 };
 

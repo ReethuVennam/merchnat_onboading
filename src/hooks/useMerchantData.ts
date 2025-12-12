@@ -21,6 +21,26 @@ export interface MerchantProfile {
     upi_qr_string?: string | null; 
     upi_mandate_status?: string | null;
     upi_mandate_ref_no?: string | null;
+    
+    // Product & Cost Fields
+    selected_products?: Array<{
+        product_code: string;
+        product_name: string;
+        pricing_type: string;
+        price: number;
+    }> | null;
+    total_integration_cost?: number | null;
+    total_monthly_cost?: number | null;
+    total_onetime_cost?: number | null;
+    monthly_rental_cost?: number | null;
+    one_time_cost?: number | null;
+    
+    // Agreement Fields
+    agreement_signed?: boolean | null;
+    agreement_signed_at?: string | null;
+    agreement_signature?: string | null;
+    agreement_ip_address?: string | null;
+    
     created_at: string;
     updated_at: string;
 }

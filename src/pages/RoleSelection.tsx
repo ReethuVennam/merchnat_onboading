@@ -23,7 +23,7 @@ export default function RoleSelection() {
                     </div>
 
                     <h1 className="text-4xl font-bold text-gray-900 mb-4">
-                        Welcome to SabbPe
+                        Welcome to CitoNidhi
                     </h1>
                     <p className="text-xl text-gray-600">
                         Choose how you want to get started
@@ -41,16 +41,16 @@ export default function RoleSelection() {
                                 <Store className="w-10 h-10 text-blue-600 group-hover:text-white transition-colors" />
                             </div>
                             <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                                I am a Merchant
+                                I am a Customer
                             </h2>
                             <p className="text-gray-600 mb-6">
-                                Register your business to accept digital payments and manage transactions
+                                Register your business to check eligibility for secured & unsecured loans
                             </p>
                             <ul className="text-left space-y-2 text-sm text-gray-500">
-                                <li>✓ Quick business verification</li>
-                                <li>✓ Accept UPI & card payments</li>
-                                <li>✓ Real-time settlement tracking</li>
-                                <li>✓ Business analytics dashboard</li>
+                                <li>✓ Complete quick digital verification for faster loan approvals</li>
+                                <li>✓ Apply for working capital, term loans, or credit lines in minutes</li>
+                                <li>✓ Track loan status, disbursals, and repayments in real time</li>
+                                <li>✓ Monitor your EMIs, upcoming dues & repayment history in one dashboard</li>
                             </ul>
                         </div>
                     </button>
@@ -65,16 +65,16 @@ export default function RoleSelection() {
                                 <Building2 className="w-10 h-10 text-indigo-600 group-hover:text-white transition-colors" />
                             </div>
                             <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                                I am a Distributor
+                                I am a SME
                             </h2>
                             <p className="text-gray-600 mb-6">
-                                Onboard and manage multiple merchants in your network
+                                Onboard and manage your own customers easily
                             </p>
                             <ul className="text-left space-y-2 text-sm text-gray-500">
-                                <li>✓ Invite merchants via WhatsApp</li>
-                                <li>✓ Track merchant applications</li>
-                                <li>✓ Network performance insights</li>
-                                <li>✓ Commission management</li>
+                                <li>✓ Invite customers directly via WhatsApp</li>
+                                <li>✓ Track each customer's onboarding progress</li>
+                                <li>✓ Monitor customer activity and performance insights</li>
+                                <li>✓ Manage your commissions from every customer transaction</li>
                             </ul>
                         </div>
                     </button>
