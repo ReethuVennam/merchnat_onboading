@@ -23,7 +23,7 @@ export const MandateVpaValidate: React.FC<MandateVpaValidateProps> = ({ onSucces
     setError("");
 
     try {
-      const response = await fetch("https://cams.sabbpe.com/api/v1/validvpa", {
+      const response = await fetch(import.meta.env.VITE_VALID_VPA_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ vpa }),

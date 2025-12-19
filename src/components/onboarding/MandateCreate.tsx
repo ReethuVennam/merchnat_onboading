@@ -116,13 +116,13 @@ const MandateCreate: React.FC<MandateCreateProps> = ({
         authorize: "Y",
         instaauth: "N",
         mandateexpirytime: 10,
-        redirecturl: "https://cams.sabbpe.com/api/v1/upimandate/cams/register/callback",
-        debiturl: "https://cams.sabbpe.com/api/v1/upimandate/cams/generic/callback",
+        redirecturl: import.meta.env.VITE_REDIRECT_URL,
+        debiturl: import.meta.env.VITE_DEBIT_URL,
       };
 
       console.log("📤 Creating mandate with amount:", amount);
 
-      const res = await fetch("https://cams.sabbpe.com/api/v1/mandatecreate", {
+      const res = await fetch(import.meta.env.VITE_MANDATE_CREATE_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -153,7 +153,7 @@ const MandateCreate: React.FC<MandateCreateProps> = ({
 
     try {
       const res = await fetch(
-        "https://cams.sabbpe.com/api/v1/ob/mandatestatus",
+        import.meta.env.VITE_MANDATE_STATUS_URL,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
