@@ -49,6 +49,7 @@ app.use(cors({
         'http://localhost:3002',
         'http://localhost:3003',
         'http://localhost:5173',
+        'http://localhost:8877',
         'https://sabbpe-frontend-988626072499.asia-south1.run.app',
 'https://onboardinguat.sabbpe.com/',
 'https://onboarding.sabbpe.com/'
