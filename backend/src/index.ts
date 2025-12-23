@@ -51,12 +51,17 @@ app.use(cors({
         'http://localhost:5173',
         'http://localhost:8877',
         'https://sabbpe-frontend-988626072499.asia-south1.run.app',
-'https://onboardinguat.sabbpe.com/',
-'https://onboarding.sabbpe.com/',
-'https://onboardinguatbckend.sabbpe.com'
+        'https://onboardinguat.sabbpe.com',
+        'https://onboarding.sabbpe.com',
+        'https://onboardinguatbckend.sabbpe.com'
     ],
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+app.options('*', cors());
+
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
