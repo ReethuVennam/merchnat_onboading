@@ -4,6 +4,10 @@ import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 
 export default defineConfig({
+        server: {
+        host: '::',
+        port: 8877
+    },
     plugins: [
         react(),
         VitePWA({
@@ -48,8 +52,5 @@ export default defineConfig({
         alias: {
             "@": path.resolve(__dirname, "./src"),
         },
-    },
-    server: {
-        port: 8877
     }
 })
