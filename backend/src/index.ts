@@ -52,7 +52,8 @@ app.use(cors({
         'http://localhost:8877',
         'https://sabbpe-frontend-988626072499.asia-south1.run.app',
 'https://onboardinguat.sabbpe.com/',
-'https://onboarding.sabbpe.com/'
+'https://onboarding.sabbpe.com/',
+'https://onboardinguatbckend.sabbpe.com'
     ],
     credentials: true
 }));
