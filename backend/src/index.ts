@@ -2,6 +2,10 @@
 
 import dotenv from 'dotenv';
 dotenv.config();
+console.log('🔍 ENV Check:');
+console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? 'PRESENT' : 'MISSING');
+console.log('SUPABASE_SERVICE_KEY:', process.env.SUPABASE_SERVICE_KEY ? 'PRESENT' : 'MISSING');
+console.log('PORT:', process.env.PORT);
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 
@@ -20,7 +24,7 @@ import {
 } from './utils/errors';
 
 // Load environment variables
-dotenv.config();
+// dotenv.config();
 
 const app: Express = express();
 const PORT = process.env.PORT || 8080;
@@ -51,6 +55,7 @@ app.use(cors({
         'http://localhost:5173',
         'http://localhost:8877',
         'https://sabbpe-frontend-988626072499.asia-south1.run.app',
+        'https://sabbpe-backend-988626072499.asia-south1.run.app',
         'https://onboardinguat.sabbpe.com',
         'https://onboarding.sabbpe.com',
         'https://onboardinguatbckend.sabbpe.com'

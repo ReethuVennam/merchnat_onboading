@@ -1,53 +1,71 @@
 ﻿// backend/src/middleware/auth.ts
-
 import { Request, Response, NextFunction } from 'express';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+// ❌ DON'T cache these at module load time
+// const supabaseUrl = process.env.SUPABASE_URL || '';
+// const supabaseKey = process.env.SUPABASE_SERVICE_KEY || '';
 
 const getSupabaseClient = () => {
+    // ✅ Read env vars inside the function
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
+
+    console.log('🔍 Supabase config check:');
+    console.log('URL:', supabaseUrl ? 'PRESENT' : 'MISSING');
+    console.log('KEY:', supabaseKey ? 'PRESENT' : 'MISSING');
+
     if (!supabaseUrl || !supabaseKey) {
         throw new Error('Supabase configuration missing');
     }
-    return createClient(supabaseUrl, supabaseKey);
+    
+    return createClient(supabaseUrl, supabaseKey, {
+        auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+            detectSessionInUrl: false
+        }
+    });
 };
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const token = req.headers.authorization?.replace('Bearer ', '');
-
-        console.log('🔑 Auth middleware - Token present:', !!token);
-
-        if (!token) {
-            console.log('❌ No token provided');
+        const authHeader = req.headers.authorization;
+        
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            console.log('❌ No valid authorization header');
             res.status(401).json({ message: 'No token provided' });
             return;
         }
 
-        const supabase = getSupabaseClient();
-        console.log('✅ Supabase client created');
+        const token = authHeader.replace('Bearer ', '');
+        console.log('🔑 Token received');
 
-        // Verify with Supabase
+        const supabase = getSupabaseClient();
+
+        // Verify token
         const { data: { user }, error } = await supabase.auth.getUser(token);
 
-        console.log('👤 User from token:', user?.id);
-        console.log('❌ Auth error:', error?.message);
-
-        if (error || !user) {
-            console.log('❌ Invalid token');
+        if (error) {
+            console.error('❌ Token verification failed:', error.message);
             res.status(401).json({ message: 'Invalid token' });
             return;
         }
 
-        // Get merchant profile to get merchantId
+        if (!user) {
+            console.log('❌ No user found');
+            res.status(401).json({ message: 'Invalid token' });
+            return;
+        }
+
+        console.log('✅ User authenticated:', user.id);
+
+        // Get merchant profile
         const { data: merchantProfile } = await supabase
             .from('merchant_profiles')
             .select('id')
             .eq('user_id', user.id)
             .single();
-
-        console.log('🏪 Merchant profile ID:', merchantProfile?.id);
 
         req.user = {
             user_id: user.id,
@@ -56,28 +74,23 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
             merchantId: merchantProfile?.id || user.id,
         };
 
-        console.log('✅ Auth successful - merchantId:', req.user.merchantId);
         next();
-    } catch (error) {
-        console.error('💥 Auth middleware error:', error);
+    } catch (error: any) {
+        console.error('💥 Auth error:', error.message);
         res.status(401).json({ message: 'Authentication failed' });
-        return;
     }
 };
 
-// Authorize middleware for role-based access
 export const authorize = (...allowedRoles: string[]) => {
     return (req: Request, res: Response, next: NextFunction): void => {
         if (!req.user) {
             res.status(401).json({ message: 'Authentication required' });
             return;
         }
-
         if (!allowedRoles.includes(req.user.role)) {
             res.status(403).json({ message: 'Insufficient permissions' });
             return;
         }
-
         next();
     };
 };

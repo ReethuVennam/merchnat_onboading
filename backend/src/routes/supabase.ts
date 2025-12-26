@@ -14,7 +14,7 @@ let supabaseClient: SupabaseClient | null = null;
 export function getSupabaseClient(): SupabaseClient {
     if (!supabaseClient) {
         const supabaseUrl = process.env.SUPABASE_URL;
-        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
         if (!supabaseUrl) {
             throw new Error('SUPABASE_URL environment variable is not set');

@@ -4,8 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 
 // Your Supabase project credentials
-const supabaseUrl = 'https://grbbtgfvgwxtkgxtakug.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdyYmJ0Z2Z2Z3d4dGtneHRha3VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcxNjEwNjcsImV4cCI6MjA3MjczNzA2N30.WfYhnPAFdBw-WZqZe95qSfk2OD9tUDw_iH9eyxgTjC4';
+const supabaseUrl = 'https://cuztcbznvckhubsmcvuj.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1enRjYnpudmNraHVic21jdnVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwNTIzODksImV4cCI6MjA3ODYyODM4OX0.XnZeq-_6RvPnQgXXSRrhLJ6tEWGz70H0Vy1te91RNdY';
 
 // Create the Supabase client with TypeScript types
 export const supabase = createClient < Database > (supabaseUrl, supabaseAnonKey, {

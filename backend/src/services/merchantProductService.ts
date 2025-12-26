@@ -11,22 +11,39 @@ import type {
 import { AgreementAlreadySignedError } from '../types/products';
 
 export class MerchantProductService implements IMerchantProductService {
-    async updateMerchantProducts(
-        merchantId: string,
-        products: SelectedProductData[]
-    ): Promise<MerchantProductColumns> {
-        const supabase = getSupabaseClient(); // ✅ Get client lazily
+async updateMerchantProducts(
+    merchantId: string,
+    products: SelectedProductData[]
+): Promise<MerchantProductColumns> {
+    const supabase = getSupabaseClient();
 
-        const { data, error } = await supabase
-            .from('merchant_profiles')
-            .update({ selected_products: products })
-            .eq('id', merchantId)
-            .select('selected_products, total_monthly_cost, total_onetime_cost, total_integration_cost, agreement_signed, agreement_signed_at, agreement_ip_address, agreement_signature')
-            .single();
+    console.log('💾 Updating products for merchant:', merchantId);
+    console.log('📦 Products:', JSON.stringify(products, null, 2));
 
-        if (error) throw error;
-        return data as MerchantProductColumns;
+    // Calculate costs
+    const costs = this.calculateCosts(products);
+
+    const { data, error } = await supabase
+        .from('merchant_profiles')
+        .update({
+            selected_products: products, // Supabase handles JSONB automatically
+            total_monthly_cost: costs.monthly_cost,
+            total_onetime_cost: costs.onetime_cost,
+            total_integration_cost: costs.integration_cost,
+            updated_at: new Date().toISOString()
+        })
+        .eq('id', merchantId)
+        .select('selected_products, total_monthly_cost, total_onetime_cost, total_integration_cost, agreement_signed, agreement_signed_at, agreement_ip_address, agreement_signature')
+        .single();
+
+    if (error) {
+        console.error('❌ Supabase update error:', error);
+        throw error;
     }
+
+    console.log('✅ Products updated successfully');
+    return data as MerchantProductColumns;
+}
 
     async getMerchantProducts(merchantId: string): Promise<SelectedProductData[]> {
         const supabase = getSupabaseClient();

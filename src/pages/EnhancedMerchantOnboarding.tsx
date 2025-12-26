@@ -1022,7 +1022,7 @@ const EnhancedOnboardingFlow: React.FC = () => {
                             {/* Logo Section */}
                             <div className="flex items-center gap-3">
                                 <img
-                                    src="https://grbbtgfvgwxtkgxtakug.supabase.co/storage/v1/object/public/product-images/SPLogo.png"
+                                    src="https://cuztcbznvckhubsmcvuj.supabase.co/storage/v1/object/public/product-images/SPLogo.png"
                                     alt="SabbPe"
                                     className="h-10 w-auto"
                                 />
