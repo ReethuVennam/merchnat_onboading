@@ -14,6 +14,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import DistributorDashboard from "./pages/DistributorDashboard";
 import MerchantDashboard from "./pages/MerchantDashboard";
 import InvitationAccept from "./pages/InvitationAccept";
+import IntegrationPaymentResult from "./pages/IntegrationPaymentResult";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,9 @@ const App = () => (
                         <Route path="/select-role" element={<RoleSelection />} />
                         <Route path="/auth" element={<Auth />} />
                         <Route path="/invite/:token" element={<InvitationAccept />} />
+                        
+                        {/* Payment Result Route - Can be public or protected based on your need */}
+                        <Route path="/integration-payment-result" element={<IntegrationPaymentResult />} />
 
                         {/* Merchant Routes */}
                         <Route

@@ -19,20 +19,27 @@ import { Logo } from "@/components/ui/logo";
 import { useMerchantData } from "@/hooks/useMerchantData";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-
-// ⭐ IMPORT MANDATE MODAL
 import { MandateFlowModal } from "@/components/onboarding/MandateFlowModal";
+import { useExternalScript } from "@/hooks/useExternalScript";
+import { useGeneratePaymentToken } from "@/hooks/useGeneratePaymentToken";
+import { useInitiatePayment } from "@/hooks/useInitiatePayment";
+import { supabase } from "@/lib/supabase";
 
 type KYCStatus = "pending" | "verified" | "approved" | "rejected";
 
 const OnboardingDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { merchantProfile, kycData, loading, refetch, user } = useMerchantData();
+  const { merchantProfile, kycData, loading, refetch } = useMerchantData();
 
-  // ⭐ MODAL STATE
+  const [user, setUser] = useState<any>(null);
+
   const [showMandateFlow, setShowMandateFlow] = useState(false);
-
   const { toast } = useToast();
+
+  // ⭐ PAYMENT INTEGRATION HOOKS
+  const scriptStatus = useExternalScript(import.meta.env.VITE_ATOM_SCRIPT_URL);
+  const generateTokenMutation = useGeneratePaymentToken();
+  const paymentMutation = useInitiatePayment();
 
   useEffect(() => {
     console.log("🔍 Dashboard Status Check:", {
@@ -42,6 +49,14 @@ const OnboardingDashboard: React.FC = () => {
       upi_mandate_status: merchantProfile?.upi_mandate_status,
     });
   }, [merchantProfile]);
+
+  useEffect(() => {
+  const fetchUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setUser(user);
+  };
+  fetchUser();
+}, []);
 
   const getStatusInfo = (status: KYCStatus) => {
     switch (status) {
@@ -137,6 +152,177 @@ const OnboardingDashboard: React.FC = () => {
     },
   ];
 
+  // ⭐ PAYMENT HANDLER - Generate unique order number for integration fee
+  const handleIntegrationPayment = async () => {
+    if (!merchantProfile?.total_integration_cost || merchantProfile.total_integration_cost <= 0) {
+      toast({
+        title: "Error",
+        description: "Invalid integration cost",
+        variant: "destructive",
+      });
+      return;
+    }
+
+        console.log("💳 Starting integration fee payment:", {
+  amount: merchantProfile.total_integration_cost,
+  clientId: user.id,  // ✅ Changed from user.clientId
+});
+
+    if (!user?.id) {  // ✅ Changed from user?.clientId
+      toast({
+        title: "Error",
+        description: "User information missing. Please login again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+
+    // Check if script is loaded
+    if (scriptStatus !== "ready") {
+      toast({
+        title: "Payment system loading",
+        description: "Please wait a moment and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Generate unique order number for integration fee payment
+    const timestamp = Date.now();
+    const orderNumber = `INT-${merchantProfile.id}-${timestamp}`;
+
+    console.log("💳 Starting integration fee payment:", {
+      amount: merchantProfile.total_integration_cost,
+      orderNumber,
+      clientId: user.clientId,
+    });
+
+    // Step 1: Generate payment token
+    generatePaymentToken(merchantProfile.total_integration_cost, orderNumber);
+  };
+
+  // Step 1: Generate Token
+  const generatePaymentToken = (amount: number, orderNumber: string) => {
+    console.log("🔑 Generating payment token for order:", orderNumber);
+
+    generateTokenMutation.mutate(undefined, {
+      onSuccess: (token) => {
+        console.log("✅ Payment token generated successfully:", token);
+
+        toast({
+          title: "Token Generated",
+          description: "Payment token generated successfully.",
+        });
+
+        // Step 2: Initiate payment with token
+        initiatePayment(amount, orderNumber, token);
+      },
+      onError: (error) => {
+        console.error("❌ Token generation error:", error);
+        toast({
+          title: "Token generation failed",
+          description: "Failed to generate payment token. Please try again.",
+          variant: "destructive",
+        });
+      },
+    });
+  };
+
+  // Step 2: Initiate Payment
+  const initiatePayment = async (
+    amount: number,
+    orderNumber: string,
+    token: string
+  ) => {
+    console.log("💰 Initiating payment with token:", token);
+
+    // Check if AtomPaynetz is available
+    if (typeof window.AtomPaynetz !== "function") {
+      console.error("❌ AtomPaynetz not available:", window.AtomPaynetz);
+      toast({
+        title: "Payment system error",
+        description:
+          "Payment gateway not initialized. Please refresh the page.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+if (!user?.id) {  // ✅ Changed from user?.clientId
+  toast({
+    title: "Error",
+    description: "User information missing. Please login again.",
+    variant: "destructive",
+  });
+  return;
+}
+
+    // Encrypt data: orderNumber|clientId
+    // const dataToEncrypt = `${orderNumber}|${user.id}`;
+    // const encryptedData = await encrypt(dataToEncrypt);
+
+    console.log("🔐 Encrypted data created");
+    const encryptedData = "Varun";
+
+    // Call the payment process API
+    paymentMutation.mutate(
+      { amount, orderNumber, encryptedData, token },
+      {
+        onSuccess: (data) => {
+          console.log("✅ Payment process response:", data);
+
+          if (data.responseDetails?.txnStatusCode !== "OTS0000") {
+            toast({
+              title: "Payment initiation failed",
+              description:
+                data.responseDetails?.txnDescription || "Please try again",
+              variant: "destructive",
+            });
+            return;
+          }
+
+          const options = {
+            atomTokenId: data.atomTokenId,
+            merchId: import.meta.env.VITE_PAYMENT_TRANSACTION_MERCHANTID,
+            custEmail: import.meta.env.VITE_PAYMENT_CUSTEMAIL,
+            custMobile: import.meta.env.VITE_PAYMENT_CUSTMOBILE,
+            returnUrl: import.meta.env.VITE_PAYMENT_RETURN_BACKEND_URL,
+          };
+
+          console.log("🚀 Opening payment gateway:", options);
+
+          try {
+            new window.AtomPaynetz(options, import.meta.env.VITE_PAYMENT_ENV);
+
+            toast({
+              title: "Payment Gateway Opened",
+              description: "Please complete your payment in the popup window.",
+            });
+          } catch (error) {
+            console.error("❌ Payment gateway error:", error);
+            toast({
+              title: "Payment error",
+              description: "Failed to open payment gateway. Please try again.",
+              variant: "destructive",
+            });
+          }
+        },
+        onError: (error) => {
+          console.error("❌ Payment process error:", error);
+          toast({
+            title: "Payment failed",
+            description: "Failed to initiate payment. Please try again.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
+  };
+
+  const isProcessing =
+    generateTokenMutation.isPending || paymentMutation.isPending;
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5">
@@ -215,7 +401,6 @@ const OnboardingDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Progress steps */}
                   <div className="mt-6">
                     <h4 className="font-semibold text-foreground mb-4">
                       Verification Progress
@@ -253,7 +438,6 @@ const OnboardingDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Re-upload KYC */}
                   {kycStatus === "rejected" && (
                     <div className="mt-6">
                       <Button
@@ -269,9 +453,7 @@ const OnboardingDashboard: React.FC = () => {
               </Card>
             </div>
 
-            {/* RIGHT SIDE */}
             <div className="space-y-6">
-              {/* Show QR after ACTIVE mandate */}
               {kycStatus === "approved" &&
                 merchantProfile?.upi_qr_string &&
                 merchantProfile?.upi_vpa && (
@@ -287,7 +469,6 @@ const OnboardingDashboard: React.FC = () => {
                   <CardTitle>Quick Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {/* Refresh */}
                   <Button
                     variant="outline"
                     className="w-full justify-start"
@@ -297,7 +478,6 @@ const OnboardingDashboard: React.FC = () => {
                     Refresh Status
                   </Button>
 
-                  {/* Continue onboarding */}
                   {(kycStatus === "pending" || kycStatus === "rejected") && (
                     <Button
                       variant="outline"
@@ -309,7 +489,6 @@ const OnboardingDashboard: React.FC = () => {
                     </Button>
                   )}
 
-                  {/* ⭐ RETRY UPI MANDATE => BLINKING RED BUTTON */}
                   {merchantProfile?.upi_mandate_status === "failed" && (
                     <Button
                       variant="outline"
@@ -321,28 +500,24 @@ const OnboardingDashboard: React.FC = () => {
                     </Button>
                   )}
 
-                  {/* ⭐ PAY ONE TIME INTEGRATION - ONLY SHOWS IF AMOUNT > 0 */}
                   {merchantProfile?.total_integration_cost !== undefined &&
                     merchantProfile?.total_integration_cost !== null &&
                     merchantProfile.total_integration_cost > 0 && (
                       <Button
                         variant="outline"
                         className="w-full justify-between border-2 border-red-500 text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-700 blink-red-alert h-auto py-3"
-                        onClick={() => {
-                          // TODO: Integrate with payment gateway
-                          toast({
-                            title: "Integration Payment Required",
-                            description: `Total integration fee: ₹${merchantProfile.total_integration_cost.toLocaleString()}. Redirecting to payment gateway...`,
-                          });
-
-                          // You can add payment gateway redirect logic here
-                          // Example:
-                          // window.location.href = `/payment?amount=${merchantProfile.total_integration_cost}`;
-                        }}
+                        onClick={handleIntegrationPayment}
+                        disabled={isProcessing || scriptStatus !== "ready"}
                       >
                         <div className="flex items-center gap-2">
                           <CreditCard className="h-4 w-4 flex-shrink-0" />
-                          <span className="text-left">Pay One Time Integration Fee</span>
+                          <span className="text-left">
+                            {scriptStatus === "loading" && "Loading Payment System..."}
+                            {scriptStatus === "error" && "Payment System Error"}
+                            {generateTokenMutation.isPending && "Generating Token..."}
+                            {paymentMutation.isPending && "Initiating Payment..."}
+                            {!isProcessing && scriptStatus === "ready" && "Pay One Time Integration Fee"}
+                          </span>
                         </div>
                         <span className="font-semibold ml-2 whitespace-nowrap">
                           ₹{merchantProfile.total_integration_cost.toLocaleString()}
@@ -376,13 +551,12 @@ const OnboardingDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* ⭐ MANDATE FLOW MODAL (IMPORTANCE: HIGH) */}
         <MandateFlowModal
           isOpen={showMandateFlow}
           onClose={() => setShowMandateFlow(false)}
           onComplete={() => {
             setShowMandateFlow(false);
-            refetch(); // refresh dashboard after mandate success
+            refetch();
           }}
           merchantProfile={merchantProfile}
           user={user}

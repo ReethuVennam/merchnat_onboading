@@ -12,7 +12,7 @@ export const getDocumentUrl = (filePath: string): string => {
     
     // Old format: /uploads/filename
     if (filePath.startsWith('/uploads/')) {
-        return `http://localhost:8888${filePath}`;
+        return `${import.meta.env.VITE_BASE_URL}${filePath}`;
     }
     
     // Supabase format: uuid/folder/filename
