@@ -48,18 +48,7 @@ process.on('uncaughtException', (error: Error) => {
 
 // Middleware
 app.use(cors({
-    origin: [
-        'http://localhost:3000',
-        'http://localhost:3002',
-        'http://localhost:3003',
-        'http://localhost:5173',
-        'http://localhost:8877',
-        'https://sabbpe-frontend-988626072499.asia-south1.run.app',
-        'https://sabbpe-backend-988626072499.asia-south1.run.app',
-        'https://onboardinguat.sabbpe.com',
-        'https://onboarding.sabbpe.com',
-        'https://onboardinguatbckend.sabbpe.com'
-    ],
+    origin: '*',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
