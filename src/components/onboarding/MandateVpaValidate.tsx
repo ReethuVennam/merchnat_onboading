@@ -4,8 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 
+export interface VpaValidationData {
+  vpa: string;
+  payer_name: string;
+}
+
 interface MandateVpaValidateProps {
-  onSuccess: (vpa: string) => void;
+  onSuccess: (data: VpaValidationData) => void; // ✅ Changed to pass object instead of string
 }
 
 export const MandateVpaValidate: React.FC<MandateVpaValidateProps> = ({ onSuccess }) => {
@@ -31,8 +36,14 @@ export const MandateVpaValidate: React.FC<MandateVpaValidateProps> = ({ onSucces
 
       const data = await response.json();
 
+      console.log("✅ VPA Validation Response:", data);
+
       if (data.errCode === "1111" && data.is_vpa_valid === "Y") {
-        onSuccess(vpa);
+        // ✅ Pass the full data including payer_name
+        onSuccess({
+          vpa: vpa,
+          payer_name: data.payer_name || "Unknown", // Extract payer_name from response
+        });
       } else {
         setError(data.errDesc || "Invalid UPI ID. Please check and try again.");
       }

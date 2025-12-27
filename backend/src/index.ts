@@ -17,6 +17,7 @@ import webhookRoutes from './routes/webhook';
 import productRoutes from './routes/products';
 import supabaseRoutes from './routes/supabase';  // ? Added
 import bankRoutes from './routes/bank';
+import transactionRoutes from './routes/transaction';
 import { logger } from './utils/logger';
 import {
     AppError,
@@ -95,6 +96,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/supabase', supabaseRoutes);
 app.use('/api/bank', bankRoutes);// ? Added
+app.use('/api/transaction', transactionRoutes);
 app.use('/api/products', productRoutes);
 
 // 404 handler

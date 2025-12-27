@@ -15,6 +15,12 @@ interface MandateFlowModalProps {
 
 type Step = 'validate' | 'mandate';
 
+// ✅ NEW: Interface for validation data
+interface VpaValidationData {
+  vpa: string;
+  payer_name: string;
+}
+
 export const MandateFlowModal: React.FC<MandateFlowModalProps> = ({
   isOpen,
   onClose,
@@ -24,7 +30,7 @@ export const MandateFlowModal: React.FC<MandateFlowModalProps> = ({
   refetchMerchant,
 }) => {
   const [step, setStep] = useState<Step>('validate');
-  const [validatedVpa, setValidatedVpa] = useState('');
+  const [validationData, setValidationData] = useState<VpaValidationData | null>(null);
   const [freshProfile, setFreshProfile] = useState(merchantProfile);
   const [loading, setLoading] = useState(false);
 
@@ -66,8 +72,9 @@ export const MandateFlowModal: React.FC<MandateFlowModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleVpaSuccess = (vpa: string) => {
-    setValidatedVpa(vpa);
+  const handleVpaSuccess = (data: VpaValidationData) => {
+    console.log("✅ VPA Validated with data:", data);
+    setValidationData(data);
     setStep('mandate');
   };
 
@@ -77,7 +84,7 @@ export const MandateFlowModal: React.FC<MandateFlowModalProps> = ({
 
   const handleClose = () => {
     setStep('validate');
-    setValidatedVpa('');
+    setValidationData(null);
     onClose();
   };
 
@@ -116,9 +123,10 @@ export const MandateFlowModal: React.FC<MandateFlowModalProps> = ({
                 <MandateVpaValidate onSuccess={handleVpaSuccess} />
               )}
 
-              {step === 'mandate' && (
+              {step === 'mandate' && validationData && (
                 <MandateCreate
-                  vpa={validatedVpa}
+                  vpa={validationData.vpa}
+                  payerName={validationData.payer_name}
                   onSuccess={handleMandateSuccess}
                   merchantProfile={freshProfile}
                   user={user}

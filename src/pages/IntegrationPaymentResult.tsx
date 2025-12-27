@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, XCircle, AlertCircle, Loader2 } from "lucide-react";
-// import { decrypt } from "@/utils/encryption";
+import { supabase } from "@/lib/supabase";
 
 export default function IntegrationPaymentResult() {
   const location = useLocation();
@@ -14,20 +14,21 @@ export default function IntegrationPaymentResult() {
 
   const [loading, setLoading] = useState(true);
   const [decryptedOrderNumber, setDecryptedOrderNumber] = useState<string>("");
+  const [savingTransaction, setSavingTransaction] = useState(false);
 
   // Parse URL parameters
   const paymentData = useMemo(() => {
     const params = new URLSearchParams(location.search);
-    const encryptedTransactionId = params.get("txnId");
+    const transactionId = params.get("txnId"); // This is the transaction ID from payment gateway
     const error = params.get("error");
 
-    console.log("Integration Payment callback params:", {
-      encryptedTransactionId,
+    console.log("💳 Integration Payment callback params:", {
+      transactionId,
       error,
       allParams: Object.fromEntries(params.entries()),
     });
 
-    let status: "success" | "error" = "error";
+    let status = "success";
     let message = "";
 
     if (error) {
@@ -45,7 +46,7 @@ export default function IntegrationPaymentResult() {
         default:
           message = "Payment failed. Please try again.";
       }
-    } else if (encryptedTransactionId) {
+    } else if (transactionId) {
       status = "success";
       message = "Your integration fee payment has been completed successfully!";
     } else {
@@ -53,57 +54,115 @@ export default function IntegrationPaymentResult() {
       message = "Invalid payment response.";
     }
 
-    return {
-      status,
-      message,
-      encryptedTransactionId,
-    };
+    return { status, message, transactionId };
   }, [location.search]);
 
-  // Decrypt transaction ID
+  // Set transaction ID directly
   useEffect(() => {
-    const decryptTransactionId = async () => {
-      if (paymentData.encryptedTransactionId) {
-        try {
-          const decrypted = await decrypt(paymentData.encryptedTransactionId);
-          console.log("🔓 Decrypted data:", decrypted);
-          
-          // Extract order number (before the |)
-          const orderNumber = decrypted.split("|")[0];
-          setDecryptedOrderNumber(orderNumber);
-        } catch (error) {
-          console.error("❌ Failed to decrypt transaction ID:", error);
-          setDecryptedOrderNumber(paymentData.encryptedTransactionId);
+    if (paymentData.transactionId) {
+      setDecryptedOrderNumber(paymentData.transactionId);
+    }
+  }, [paymentData.transactionId]);
+
+  // ✅ Save transaction ID to backend
+  const saveTransactionToBackend = async (transactionId: string) => {
+    try {
+      setSavingTransaction(true);
+      console.log("💾 Saving transaction ID to backend:", transactionId);
+
+      // Get auth token from Supabase
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        console.error("❌ No auth token found");
+        toast({
+          title: "Authentication Error",
+          description: "Please login again to save payment details.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      // Call backend API to update transaction ID
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/transaction/update`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            transactionId: transactionId,
+          }),
         }
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log("✅ Transaction ID saved successfully:", transactionId);
+        toast({
+          title: "Payment Saved",
+          description: "Your payment details have been saved successfully.",
+        });
+        return true;
+      } else {
+        console.error("❌ Failed to save transaction ID:", data);
+        toast({
+          title: "Save Failed",
+          description: data.message || "Failed to save payment details.",
+          variant: "destructive",
+        });
+        return false;
+      }
+    } catch (error) {
+      console.error("❌ Error saving transaction ID:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save payment details. Please contact support.",
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setSavingTransaction(false);
+    }
+  };
+
+  // Stop loading after delay and save transaction if successful
+  useEffect(() => {
+    const processPayment = async () => {
+      // Wait for loading animation
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      setLoading(false);
+
+      // If payment successful, save transaction ID
+      if (
+        paymentData.status === "success" &&
+        paymentData.transactionId &&
+        !savingTransaction
+      ) {
+        const saved = await saveTransactionToBackend(paymentData.transactionId);
+
+        // Redirect to dashboard after 2 seconds if saved successfully
+if (saved) {
+  setTimeout(() => {
+    window.location.href = "/merchant-onboarding?step=dashboard"; // ✅ Add query param
+  }, 2000);
+}
       }
     };
 
-    decryptTransactionId();
-  }, [paymentData.encryptedTransactionId]);
-
-  // Stop loading after delay
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 1500);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Show success toast
-  useEffect(() => {
-    if (!loading && paymentData.status === "success") {
-      toast({
-        title: "Integration Fee Paid",
-        description: "Your integration fee has been successfully processed.",
-      });
-    }
-  }, [loading, paymentData.status, toast]);
+    processPayment();
+  }, [paymentData.status, paymentData.transactionId]);
 
   const getStatusIcon = () => {
-    if (loading) {
+    if (loading || savingTransaction) {
       return <Loader2 className="h-24 w-24 text-blue-500 animate-spin" />;
     }
+
     switch (paymentData.status) {
       case "success":
         return <CheckCircle2 className="h-24 w-24 text-green-500" />;
@@ -116,6 +175,8 @@ export default function IntegrationPaymentResult() {
 
   const getStatusTitle = () => {
     if (loading) return "Processing Payment...";
+    if (savingTransaction) return "Saving Payment Details...";
+
     switch (paymentData.status) {
       case "success":
         return "Payment Successful!";
@@ -146,12 +207,11 @@ export default function IntegrationPaymentResult() {
             {getStatusTitle()}
           </CardTitle>
         </CardHeader>
-
         <CardContent className="space-y-6">
           <div className="text-center">
             <p className="text-lg mb-4">{paymentData.message}</p>
 
-            {paymentData.encryptedTransactionId && (
+            {paymentData.transactionId && (
               <div className="bg-muted p-4 rounded-lg border mb-4">
                 <p className="text-sm text-muted-foreground mb-1">
                   Transaction ID
@@ -165,12 +225,13 @@ export default function IntegrationPaymentResult() {
             {paymentData.status === "success" && (
               <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                 <p className="text-sm text-green-800 dark:text-green-200">
-                  ✅ Your integration fee has been successfully processed. You can now proceed with your merchant setup.
+                  ✅ Your integration fee has been successfully processed. You
+                  can now proceed with your merchant setup.
                 </p>
               </div>
             )}
 
-            {!loading && !paymentData.encryptedTransactionId && (
+            {!loading && !paymentData.transactionId && (
               <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                 <p className="text-sm text-yellow-800 dark:text-yellow-200">
                   ⚠️ Transaction ID not found. Please contact support.
@@ -185,15 +246,17 @@ export default function IntegrationPaymentResult() {
                 <Button
                   size="lg"
                   className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600"
-                  onClick={() => navigate("/merchant-dashboard")}
+                  onClick={() => navigate("/merchant-onboarding?step=dashboard")}
+                  disabled={savingTransaction}
                 >
-                  Go to Dashboard
+                  {savingTransaction ? "Saving..." : "Go to Dashboard"}
                 </Button>
                 <Button
                   size="lg"
                   variant="outline"
                   className="flex-1"
                   onClick={() => navigate("/")}
+                  disabled={savingTransaction}
                 >
                   Go Home
                 </Button>
@@ -203,7 +266,7 @@ export default function IntegrationPaymentResult() {
                 <Button
                   size="lg"
                   className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600"
-                  onClick={() => navigate("/merchant-dashboard")}
+                  onClick={() => navigate("/merchant-onboarding?step=dashboard")}
                 >
                   Back to Dashboard
                 </Button>

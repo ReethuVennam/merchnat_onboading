@@ -500,30 +500,61 @@ if (!user?.id) {  // ✅ Changed from user?.clientId
                     </Button>
                   )}
 
-                  {merchantProfile?.total_integration_cost !== undefined &&
-                    merchantProfile?.total_integration_cost !== null &&
-                    merchantProfile.total_integration_cost > 0 && (
-                      <Button
-                        variant="outline"
-                        className="w-full justify-between border-2 border-red-500 text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-700 blink-red-alert h-auto py-3"
-                        onClick={handleIntegrationPayment}
-                        disabled={isProcessing || scriptStatus !== "ready"}
-                      >
-                        <div className="flex items-center gap-2">
-                          <CreditCard className="h-4 w-4 flex-shrink-0" />
-                          <span className="text-left">
-                            {scriptStatus === "loading" && "Loading Payment System..."}
-                            {scriptStatus === "error" && "Payment System Error"}
-                            {generateTokenMutation.isPending && "Generating Token..."}
-                            {paymentMutation.isPending && "Initiating Payment..."}
-                            {!isProcessing && scriptStatus === "ready" && "Pay One Time Integration Fee"}
-                          </span>
-                        </div>
-                        <span className="font-semibold ml-2 whitespace-nowrap">
-                          ₹{merchantProfile.total_integration_cost.toLocaleString()}
-                        </span>
-                      </Button>
-                    )}
+{/* Integration Payment Button - Show based on Transaction ID status */}
+{merchantProfile?.total_integration_cost !== undefined &&
+  merchantProfile?.total_integration_cost !== null &&
+  merchantProfile.total_integration_cost > 0 && (
+    <>
+      {/* Show GREEN PAID button if Transaction ID exists */}
+      {merchantProfile?.["Transaction Id"] ? (
+        <div className="w-full p-4 bg-green-50 border-2 border-green-500 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <span className="text-green-700 font-semibold">
+                Integration Fee Paid
+              </span>
+            </div>
+            <span className="text-lg font-bold text-green-700">
+              ₹{merchantProfile.total_integration_cost.toLocaleString()}
+            </span>
+          </div>
+          <p className="text-xs text-green-600 mt-2 font-mono">
+            Txn ID: {merchantProfile["Transaction Id"]}
+          </p>
+        </div>
+      ) : (
+        /* Show RED PAYMENT button if not paid */
+        <Button
+          variant="outline"
+          className="w-full justify-between border-2 border-red-500 text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-700 blink-red-alert h-auto py-3"
+          onClick={handleIntegrationPayment}
+          disabled={isProcessing || scriptStatus !== "ready"}
+        >
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4 flex-shrink-0" />
+            <span className="text-left">
+              {scriptStatus === "loading"
+                ? "Loading Payment System..."
+                : scriptStatus === "error"
+                ? "Payment System Error"
+                : generateTokenMutation.isPending
+                ? "Generating Token..."
+                : paymentMutation.isPending
+                ? "Initiating Payment..."
+                : !isProcessing && scriptStatus === "ready"
+                ? "Pay One Time Integration Fee"
+                : ""}
+            </span>
+          </div>
+          <span className="font-semibold ml-2 whitespace-nowrap">
+            ₹{merchantProfile.total_integration_cost.toLocaleString()}
+          </span>
+        </Button>
+      )}
+    </>
+  )}
+
                 </CardContent>
               </Card>
 

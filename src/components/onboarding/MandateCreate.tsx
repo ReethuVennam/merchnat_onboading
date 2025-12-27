@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 
 interface MandateCreateProps {
   vpa: string;
+  payerName: string;
   onSuccess: () => void;
   merchantProfile: any;
   user: any;
@@ -15,6 +16,7 @@ interface MandateCreateProps {
 
 const MandateCreate: React.FC<MandateCreateProps> = ({
   vpa,
+  payerName,
   onSuccess,
   merchantProfile,
   user,
@@ -37,7 +39,7 @@ const MandateCreate: React.FC<MandateCreateProps> = ({
   useEffect(() => {
     console.log("🔍 MandateCreate - merchantProfile changed:", merchantProfile);
     console.log("🔍 MandateCreate - total_monthly_cost:", merchantProfile?.total_monthly_cost);
-    
+
     if (merchantProfile?.total_monthly_cost) {
       // Convert to string with 2 decimal places
       const monthlyCost = parseFloat(merchantProfile.total_monthly_cost).toFixed(2);
@@ -111,9 +113,9 @@ const MandateCreate: React.FC<MandateCreateProps> = ({
         mandatestartdate: formatDateForApi(startDate),
         mandateenddate: formatDateForApi(endDate),
         payervpa: vpa,
-        revokeable: "Y",
-        payername: "",
-        authorize: "Y",
+        revokeable: "Y", // For real prod - N, For prodTest - Y
+        payername: payerName,
+        authorize: import.meta.env.VITE_MANDATE_AUTHORIZE, // For real prod - Y, For prodTest - N
         instaauth: "N",
         mandateexpirytime: 10,
         redirecturl: import.meta.env.VITE_REDIRECT_URL,
@@ -273,6 +275,14 @@ const MandateCreate: React.FC<MandateCreateProps> = ({
           Configure your mandate details
         </p>
 
+        {/* ✅ ADD THIS SECTION - Display Payer Name */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Account Holder Name</label>
+          <div className="p-3 bg-muted rounded-md">
+            <p className="font-semibold">{payerName}</p>
+          </div>
+        </div>
+
         {/* UPI ID */}
         <div>
           <label className="text-sm font-medium">UPI ID</label>
@@ -286,10 +296,10 @@ const MandateCreate: React.FC<MandateCreateProps> = ({
         {/* Amount - ✅ NOW DYNAMIC */}
         <div>
           <label className="text-sm font-medium">Amount (₹)</label>
-          <Input 
-            value={amount} 
-            disabled 
-            className="bg-gray-100 cursor-not-allowed" 
+          <Input
+            value={amount}
+            disabled
+            className="bg-gray-100 cursor-not-allowed"
           />
           {merchantProfile?.total_monthly_cost && (
             <p className="text-xs text-gray-500 mt-1">

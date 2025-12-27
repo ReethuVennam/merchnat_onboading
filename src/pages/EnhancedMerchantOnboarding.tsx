@@ -906,7 +906,7 @@ const EnhancedOnboardingFlow: React.FC = () => {
 
         if (status === "approved" || status === "verified") {
             goToStep("dashboard");
-        } else if (status === "validating" || status === "pending_bank_approval") {
+        } else if (status === "submitted" || status === "pending_bank_approval") {
             goToStep("dashboard");
         } else if (
             status === "validation_failed" ||
