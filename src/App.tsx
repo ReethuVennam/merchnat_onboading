@@ -33,7 +33,7 @@ const App = () => (
                         <Route path="/invite/:token" element={<InvitationAccept />} />
                         
                         {/* Payment Result Route - Can be public or protected based on your need */}
-                        <Route path="/integration-payment-result" element={<IntegrationPaymentResult />} />
+                        <Route path="/payment-result" element={<IntegrationPaymentResult />} />
 
                         {/* Merchant Routes */}
                         <Route

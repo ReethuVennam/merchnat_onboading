@@ -190,7 +190,7 @@ const OnboardingDashboard: React.FC = () => {
 
     // Generate unique order number for integration fee payment
     const timestamp = Date.now();
-    const orderNumber = `INT-${merchantProfile.id}-${timestamp}`;
+    const orderNumber = `INT-${timestamp}`;
 
     console.log("💳 Starting integration fee payment:", {
       amount: merchantProfile.total_integration_cost,
@@ -263,7 +263,7 @@ if (!user?.id) {  // ✅ Changed from user?.clientId
     // const encryptedData = await encrypt(dataToEncrypt);
 
     console.log("🔐 Encrypted data created");
-    const encryptedData = "Varun";
+    const encryptedData = orderNumber;
 
     // Call the payment process API
     paymentMutation.mutate(
