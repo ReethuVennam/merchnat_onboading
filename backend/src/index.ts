@@ -19,6 +19,8 @@ import supabaseRoutes from './routes/supabase';  // ? Added
 import bankRoutes from './routes/bank';
 import transactionRoutes from './routes/transaction';
 import whatsappRoutes from './routes/whatsapp';
+import invitesRoutes from './routes/invites';
+import distributorRoutes from './routes/distributor';
 import { logger } from './utils/logger';
 import {
     AppError,
@@ -100,6 +102,8 @@ app.use('/api/bank', bankRoutes);// ? Added
 app.use('/api/transaction', transactionRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/invites', invitesRoutes);
+app.use('/api/distributor', distributorRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
