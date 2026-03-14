@@ -124,12 +124,6 @@ export const ProductSelectionEnhanced: React.FC<ProductSelectionProps> = ({ onNe
         }
     };
 
-    const checkAgreementStatus = () => {
-        if (merchantProfile?.agreement_signed) {
-            setAgreementSigned(true);
-        }
-    };
-
     const handleProductToggle = (productCode: string) => {
         const newSelected = new Set(selectedProductCodes);
 

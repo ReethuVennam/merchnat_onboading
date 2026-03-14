@@ -1,3 +1,6 @@
+
+
+
 // src/pages/SupportLogin.tsx
 
 import React, { useState } from 'react';
@@ -7,26 +10,43 @@ import { Lock, Mail, AlertCircle, Loader2 } from 'lucide-react';
 
 export const SupportLogin: React.FC = () => {
     const navigate = useNavigate();
-    const { login, loading, error, clearError } = useSupportAuth();
+    const { login } = useSupportAuth(); // ✅ only login from context
+
     const [email, setEmail] = useState('support@sabbpe.com');
     const [password, setPassword] = useState('support123');
-    const [localError, setLocalError] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLocalError('');
-        clearError();
+        setError('');
 
         if (!email || !password) {
-            setLocalError('Email and password are required');
+            setError('Email and password are required');
             return;
         }
 
         try {
+            setLoading(true);
+
             await login(email, password);
-            navigate('/dashboard');
-        } catch (err) {
-            setLocalError(err instanceof Error ? err.message : 'Login failed');
+
+            const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+
+            // if (storedUser.role === 'super_admin' || storedUser.role === 'admin') {
+            //     navigate('/admin');
+            // } else {
+            //     navigate('/dashboard');
+            // }
+if (storedUser.role === 'super_admin' || storedUser.role === 'admin') {
+    navigate('/admin');
+} else {
+    navigate('/support');
+}
+        } catch (err: any) {
+            setError(err.message || 'Login failed');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -39,22 +59,23 @@ export const SupportLogin: React.FC = () => {
                         <Lock className="w-8 h-8 text-blue-600" />
                     </div>
                     <h1 className="text-3xl font-bold text-white mt-4">SabbPe Support</h1>
-                    <p className="text-blue-100 mt-2">KYC Review Portal</p>
+                    <p className="text-blue-100 mt-2">Admin & Support Portal</p>
                 </div>
 
                 {/* Login Card */}
                 <div className="bg-white rounded-lg shadow-2xl p-8 space-y-6">
+
                     {/* Error Alert */}
-                    {(error || localError) && (
-                        <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex gap-3 animate-pulse">
+                    {error && (
+                        <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex gap-3">
                             <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                            <div className="text-sm text-red-800">{error || localError}</div>
+                            <div className="text-sm text-red-800">{error}</div>
                         </div>
                     )}
 
-                    {/* Form */}
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        {/* Email Input */}
+
+                        {/* Email */}
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                 Email Address
@@ -64,19 +85,14 @@ export const SupportLogin: React.FC = () => {
                                 <input
                                     type="email"
                                     value={email}
-                                    onChange={(e) => {
-                                        setEmail(e.target.value);
-                                        setLocalError('');
-                                        clearError();
-                                    }}
+                                    onChange={(e) => setEmail(e.target.value)}
                                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                    placeholder="support@sabbpe.com"
                                     disabled={loading}
                                 />
                             </div>
                         </div>
 
-                        {/* Password Input */}
+                        {/* Password */}
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                 Password
@@ -86,13 +102,8 @@ export const SupportLogin: React.FC = () => {
                                 <input
                                     type="password"
                                     value={password}
-                                    onChange={(e) => {
-                                        setPassword(e.target.value);
-                                        setLocalError('');
-                                        clearError();
-                                    }}
+                                    onChange={(e) => setPassword(e.target.value)}
                                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                    placeholder="••••••••"
                                     disabled={loading}
                                 />
                             </div>
@@ -102,41 +113,27 @@ export const SupportLogin: React.FC = () => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold py-3 px-4 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
+                            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold py-3 px-4 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50"
                         >
                             {loading ? (
                                 <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
                                     Signing in...
                                 </>
                             ) : (
-                                'Sign In to Portal'
+                                'Sign In'
                             )}
                         </button>
                     </form>
 
-                    {/* Demo Credentials Info */}
-                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p className="text-xs font-semibold text-blue-900 mb-2">📋 Demo Credentials</p>
-                        <p className="text-xs text-blue-800">
-                            <strong>Email:</strong> support@sabbpe.com<br />
-                            <strong>Password:</strong> support123
-                        </p>
-                    </div>
-
                     {/* Footer */}
-                    <div className="pt-4 border-t border-gray-200">
-                        <p className="text-center text-xs text-gray-600">
-                            🔒 Authorized personnel only<br />
-                            Your login is secure and encrypted
-                        </p>
+                    <div className="pt-4 border-t border-gray-200 text-center text-xs text-gray-600">
+                        🔒 Authorized personnel only
                     </div>
                 </div>
 
-                {/* Info Footer */}
                 <div className="mt-8 text-center text-blue-100 text-sm">
-                    <p>Powered by SabbPe</p>
-                    <p className="text-xs mt-2 opacity-75">Support Module v1.0</p>
+                    Powered by SabbPe
                 </div>
             </div>
         </div>

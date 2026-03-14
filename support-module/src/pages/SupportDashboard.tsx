@@ -1,240 +1,172 @@
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useSupportAuth } from '../context/SupportAuthContext';
-import { getPendingKYCs, reviewKYC, PendingKYC, handleApiError, getDocumentUrl } from '../lib/supportApi';
-import { Loader2, LogOut, AlertCircle } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { useSupportAuth } from "../context/SupportAuthContext";
+import { useNavigate } from "react-router-dom";
+import { getTickets } from "../lib/supportApi";
+import TicketChatModal from "../components/TicketChatModal";
 
 export const SupportDashboard: React.FC = () => {
-    const navigate = useNavigate();
-    const { user, token, logout } = useSupportAuth();
-    const [pendingKYCs, setPendingKYCs] = useState<PendingKYC[]>([]);
-    const [filteredKYCs, setFilteredKYCs] = useState<PendingKYC[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [selectedMerchant, setSelectedMerchant] = useState<PendingKYC | null>(null);
-    const [reviewing, setReviewing] = useState(false);
-    const [error, setError] = useState('');
-    const [searchTerm, setSearchTerm] = useState('');
-    const [reviewNotes, setReviewNotes] = useState('');
+  const { token } = useSupportAuth();
+  const navigate = useNavigate();
 
-    useEffect(() => {
-        if (!token) {
-            navigate('/login');
-            return;
-        }
-        fetchPendingKYCs();
-    }, [token, navigate]);
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [error, setError] = useState("");
+  const [chatTicketId, setChatTicketId] = useState<string | null>(null);
 
-    useEffect(() => {
-        const filtered = pendingKYCs.filter(kyc =>
-            (kyc?.full_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-            (kyc?.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-            (kyc?.business_name?.toLowerCase() || '').includes(searchTerm.toLowerCase())
-        );
-        setFilteredKYCs(filtered);
-    }, [searchTerm, pendingKYCs]);
+  useEffect(() => {
+    fetchTickets();
+  }, [page]);
 
-    const fetchPendingKYCs = async () => {
-        try {
-            setLoading(true);
-            setError('');
-            if (!token) throw new Error('No authentication token');
-            const data = await getPendingKYCs(token);
-            setPendingKYCs(data);
-            setFilteredKYCs(data);
-        } catch (err) {
-            const errorMessage = handleApiError(err);
-            setError(errorMessage);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleApprove = async (merchantId: string) => {
-        if (!window.confirm('Are you sure you want to APPROVE this KYC?')) return;
-        try {
-            setReviewing(true);
-            setError('');
-            if (!token) throw new Error('No authentication token');
-            await reviewKYC(token, {
-                merchantId,
-                decision: 'approve',
-                reviewNotes: reviewNotes || 'Approved by support staff'
-            });
-            alert('✅ KYC Approved Successfully!');
-            await fetchPendingKYCs();
-            setSelectedMerchant(null);
-            setReviewNotes('');
-        } catch (err) {
-            const errorMessage = handleApiError(err);
-            setError(errorMessage);
-            alert(`❌ Error: ${errorMessage}`);
-        } finally {
-            setReviewing(false);
-        }
-    };
-
-    const handleReject = async (merchantId: string) => {
-        if (!reviewNotes.trim()) {
-            alert('⚠️ Please provide a rejection reason');
-            return;
-        }
-        if (!window.confirm('Are you sure you want to REJECT this KYC?')) return;
-        try {
-            setReviewing(true);
-            setError('');
-            if (!token) throw new Error('No authentication token');
-            await reviewKYC(token, {
-                merchantId,
-                decision: 'reject',
-                reviewNotes
-            });
-            alert('❌ KYC Rejected Successfully!');
-            await fetchPendingKYCs();
-            setSelectedMerchant(null);
-            setReviewNotes('');
-        } catch (err) {
-            const errorMessage = handleApiError(err);
-            setError(errorMessage);
-            alert(`❌ Error: ${errorMessage}`);
-        } finally {
-            setReviewing(false);
-        }
-    };
-
-    const handleLogout = () => {
-        if (window.confirm('Are you sure you want to logout?')) {
-            logout();
-            navigate('/login');
-        }
-    };
-
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <Loader2 className="w-12 h-12 animate-spin text-blue-600" />
-            </div>
-        );
+  const fetchTickets = async () => {
+    try {
+      const data = await getTickets(token!, page, 5);
+      setTickets(data?.tickets || []);
+      setPages(data?.pages || 1);
+    } catch {
+      setError("Failed to fetch tickets");
     }
+  };
 
-    return (
-        <div className="min-h-screen bg-gray-50">
-            <div className="bg-white shadow sticky top-0 z-40">
-                <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900">KYC Review Portal</h1>
-                        <p className="text-sm text-gray-600">Welcome, {user?.name} • {user?.email}</p>
-                    </div>
-                    <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg border border-gray-300">
-                        <LogOut className="w-5 h-5" /> Logout
-                    </button>
-                </div>
-            </div>
+  const updateStatus = async (ticketId: string, status: string) => {
+    try {
+      const res = await fetch("http://localhost:5000/api/tickets/status", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ ticketId, status }),
+      });
 
-            <div className="max-w-7xl mx-auto px-6 py-8">
-                {error && <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg"><AlertCircle className="w-5 h-5 text-red-600 inline" /> {error}</div>}
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message);
+      }
 
-                {selectedMerchant ? (
-                    <div className="bg-white rounded-lg shadow-lg">
-                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white flex justify-between">
-                            <div>
-                                <h2 className="text-2xl font-bold">{selectedMerchant.business_name}</h2>
-                                <p className="text-blue-100">{selectedMerchant.full_name}</p>
-                            </div>
-                            <button onClick={() => { setSelectedMerchant(null); setReviewNotes(''); }} className="text-2xl">✕</button>
-                        </div>
+      fetchTickets();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
 
-                        <div className="p-6 space-y-6">
-                            <div>
-                                <h3 className="font-semibold mb-4">📋 Merchant Information</h3>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="p-4 bg-gray-50 rounded-lg">
-                                        <p className="text-xs text-gray-600">Full Name</p>
-                                        <p>{selectedMerchant.full_name}</p>
-                                    </div>
-                                    <div className="p-4 bg-gray-50 rounded-lg">
-                                        <p className="text-xs text-gray-600">Email</p>
-                                        <p>{selectedMerchant.email}</p>
-                                    </div>
-                                    <div className="p-4 bg-gray-50 rounded-lg">
-                                        <p className="text-xs text-gray-600">Mobile</p>
-                                        <p>{selectedMerchant.mobile_number}</p>
-                                    </div>
-                                    <div className="p-4 bg-gray-50 rounded-lg">
-                                        <p className="text-xs text-gray-600">Business</p>
-                                        <p>{selectedMerchant.business_name}</p>
-                                    </div>
-                                </div>
-                            </div>
+  const statusBadge = (status: string) => {
+    const base =
+      "px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide";
 
-                            {selectedMerchant.merchant_documents && selectedMerchant.merchant_documents.length > 0 && (
-                                <div>
-                                    <h3 className="font-semibold mb-4">📄 Documents</h3>
-                                    <div className="space-y-2">
-                                        {selectedMerchant.merchant_documents.map((doc) => (
-                                            <div key={doc.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                                                <div>
-                                                    <p className="font-medium">{doc.document_type.replace(/_/g, ' ').toUpperCase()}</p>
-                                                    <p className="text-xs text-gray-600">{new Date(doc.uploaded_at).toLocaleDateString()}</p>
-                                                </div>
-                                                <button
-                                                    onClick={() => {
-                                                        const url = getDocumentUrl(doc.file_path);
-                                                        console.log('Opening:', url);
-                                                        window.open(url, '_blank');
-                                                    }}
-                                                    className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
-                                                >
-                                                    View
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+    switch (status) {
+      case "assigned":
+        return `${base} bg-purple-100 text-purple-700`;
+      case "in_progress":
+        return `${base} bg-yellow-100 text-yellow-700`;
+      case "resolved":
+        return `${base} bg-green-100 text-green-700`;
+      case "closed":
+        return `${base} bg-gray-200 text-gray-600`;
+      default:
+        return `${base} bg-blue-100 text-blue-700`;
+    }
+  };
 
-                            <div>
-                                <label className="block text-sm font-semibold mb-2">📝 Review Notes</label>
-                                <textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} placeholder="Add review notes..." rows={5} className="w-full px-4 py-3 border rounded-lg" disabled={reviewing} />
-                            </div>
-                        </div>
+  const openChat = (ticketId: string) => {
+    setChatTicketId(ticketId);
+  };
 
-                        <div className="p-6 border-t bg-gray-50 flex justify-end gap-3">
-                            <button onClick={() => { setSelectedMerchant(null); setReviewNotes(''); }} className="px-6 py-3 border rounded-lg" disabled={reviewing}>← Back</button>
-                            <button onClick={() => handleReject(selectedMerchant.id)} className="px-6 py-3 bg-red-600 text-white rounded-lg" disabled={reviewing || !reviewNotes.trim()}>Reject</button>
-                            <button onClick={() => handleApprove(selectedMerchant.id)} className="px-6 py-3 bg-green-600 text-white rounded-lg" disabled={reviewing}>Approve</button>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="space-y-6">
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="bg-white p-6 rounded-lg shadow"><p className="text-gray-600">Pending</p><p className="text-3xl font-bold">{filteredKYCs.length}</p></div>
-                            <div className="bg-white p-6 rounded-lg shadow"><p className="text-gray-600">Total</p><p className="text-3xl font-bold">{pendingKYCs.length}</p></div>
-                            <div className="bg-white p-6 rounded-lg shadow"><p className="text-gray-600">Search</p><p className="text-3xl font-bold">{searchTerm ? '🔍' : '-'}</p></div>
-                        </div>
+  return (
+    <>
+      <h1 className="text-2xl font-semibold text-gray-800 mb-8">
+        My Assigned Tickets
+      </h1>
 
-                        <div className="bg-white p-4 rounded-lg shadow">
-                            <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full px-4 py-3 border rounded-lg" />
-                        </div>
-
-                        {filteredKYCs.length > 0 ? (
-                            <div className="space-y-3">
-                                {filteredKYCs.map((kyc) => (
-                                    <div key={kyc.id} className="bg-white p-4 rounded-lg shadow flex justify-between items-center">
-                                        <div>
-                                            <h3 className="font-semibold">{kyc.business_name}</h3>
-                                            <p className="text-sm text-gray-600">{kyc.full_name}</p>
-                                        </div>
-                                        <button onClick={() => setSelectedMerchant(kyc)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Review</button>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-center p-12 bg-white rounded-lg">No pending applications</div>
-                        )}
-                    </div>
-                )}
-            </div>
+      {error && (
+        <div className="mb-6 p-3 bg-red-100 text-red-600 rounded">
+          {error}
         </div>
-    );
+      )}
+
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
+              <tr>
+                <th className="p-4 text-left">Module</th>
+                <th className="p-4 text-left">Title</th>
+                <th className="p-4 text-left">Status</th>
+                <th className="p-4 text-left">Chat</th>
+                <th className="p-4 text-left">Action</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {tickets.map((ticket) => (
+                <tr key={ticket.id} className="border-b hover:bg-indigo-50">
+                  <td className="p-4 font-medium">{ticket.module}</td>
+                  <td className="p-4">{ticket.title}</td>
+
+                  <td className="p-4">
+                    <span className={statusBadge(ticket.status)}>
+                      {ticket.status.replace("_", " ")}
+                    </span>
+                  </td>
+
+                  <td className="p-4 text-center">
+                    <button
+                      onClick={() => openChat(ticket.id)}
+                      className="px-3 py-1 bg-emerald-600 text-white rounded text-xs"
+                    >
+                      Chat
+                    </button>
+                  </td>
+
+                  <td className="p-4 text-center space-x-2">
+                    {ticket.status === "assigned" && (
+                      <button
+                        onClick={() =>
+                          updateStatus(ticket.id, "in_progress")
+                        }
+                        className="px-3 py-1 bg-blue-600 text-white rounded text-xs"
+                      >
+                        Start
+                      </button>
+                    )}
+
+                    {ticket.status === "in_progress" && (
+                      <button
+                        onClick={() =>
+                          updateStatus(ticket.id, "resolved")
+                        }
+                        className="px-3 py-1 bg-green-600 text-white rounded text-xs"
+                      >
+                        Mark Resolved
+                      </button>
+                    )}
+
+                    {ticket.status === "resolved" && (
+                      <span className="px-3 py-1 bg-gray-200 text-gray-600 rounded text-xs">
+                        Waiting Admin
+                      </span>
+                    )}
+
+                    {ticket.status === "closed" && (
+                      <span className="px-3 py-1 bg-gray-300 text-gray-700 rounded text-xs">
+                        Closed
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {chatTicketId && (
+        <TicketChatModal
+          ticketId={chatTicketId}
+          onClose={() => setChatTicketId(null)}
+        />
+      )}
+    </>
+  );
 };
