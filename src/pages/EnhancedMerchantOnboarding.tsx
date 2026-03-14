@@ -1178,6 +1178,8 @@ import { BankDetails } from '@/components/onboarding/BankDetails';
 import { ProductSelection } from '@/components/onboarding/ProductSelection';
 import { ReviewSubmit } from '@/components/onboarding/ReviewSubmit';
 import { OnboardingDashboard } from '@/components/onboarding/OnboardingDashboard';
+import { MandatePopup } from '@/components/onboarding/MandatePopup';
+import { MandateFlowModal } from '@/components/onboarding/MandateFlowModal';
 
 
 export interface OnboardingData {
@@ -1301,7 +1303,7 @@ const SuccessPopup: React.FC<{ isOpen: boolean; onClose: () => void; onGoToDashb
                         onClick={handleGoToDashboard}
                         className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors"
                     >
-                        Go to Merchant Dashboard
+                        Continue to Mandate Setup
                     </button>
                 </div>
             </div>
@@ -1336,6 +1338,8 @@ const EnhancedOnboardingFlow: React.FC = () => {
     };
 
     const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+    const [showMandatePopup, setShowMandatePopup] = useState(false);
+    const [showMandateFlow, setShowMandateFlow] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [stepRestored, setStepRestored] = useState(false);
 
@@ -1363,7 +1367,7 @@ const EnhancedOnboardingFlow: React.FC = () => {
     });
 
     const { currentStep, currentStepIndex, totalSteps, progress, nextStep, prevStep, goToStep } = useOnboardingFlow();
-    const { merchantProfile, bankDetails, documents, kycData, loading: profileLoading } = useMerchantData();
+    const { merchantProfile, bankDetails, documents, kycData, loading: profileLoading, refetch } = useMerchantData();
 
     type OnboardingStep = 'welcome' | 'products' | 'registration' | 'kyc' | 'bank-details' | 'review' | 'dashboard';
 
@@ -2132,8 +2136,28 @@ const EnhancedOnboardingFlow: React.FC = () => {
                 onClose={() => setShowSuccessPopup(false)}
                 onGoToDashboard={() => {
                     setShowSuccessPopup(false);
+                    setShowMandatePopup(true);
+                }}
+            />
+
+            <MandatePopup
+                isOpen={showMandatePopup}
+                onEnableMandate={() => {
+                    setShowMandatePopup(false);
+                    setShowMandateFlow(true);
+                }}
+            />
+
+            <MandateFlowModal
+                isOpen={showMandateFlow}
+                onClose={() => setShowMandateFlow(false)}
+                onComplete={() => {
+                    setShowMandateFlow(false);
                     goToStep('dashboard');
                 }}
+                merchantProfile={merchantProfile}
+                user={user}
+                refetchMerchant={refetch}
             />
 
             {process.env.NODE_ENV === 'development' && (
