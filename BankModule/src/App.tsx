@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { BankAuthProvider, useBankAuth } from './context/BankAuthContext';
 import { BankLogin } from './pages/BankLogin';
+
 import { BankDashboard } from './pages/BankDashboard';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
