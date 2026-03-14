@@ -697,6 +697,7 @@ export default function DistributorDashboard() {
 
             // Call backend API to send SMS invite
             const response = await fetch(`${API_BASE_URL}/api/invites/bulk-send`, {
+            const response = await fetch(`${API_BASE_URL}/invites/bulk-send`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -866,6 +867,7 @@ export default function DistributorDashboard() {
             }
 
             const response = await fetch(`${API_BASE_URL}/api/invites/bulk-send`, {
+            const response = await fetch(`${API_BASE_URL}/invites/bulk-send`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
