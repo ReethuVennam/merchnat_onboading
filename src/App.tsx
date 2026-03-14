@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import RoleSelection from "./pages/RoleSelection";
 import EnhancedMerchantOnboarding from "./pages/EnhancedMerchantOnboarding";
+import DistributorMerchantOnboarding from "./pages/DistributorMerchantOnboarding";
 import AdminDashboard from "./pages/AdminDashboard";
 import DistributorDashboard from "./pages/DistributorDashboard";
 import MerchantDashboard from "./pages/MerchantDashboard";
@@ -62,6 +63,14 @@ const App = () => (
                             element={
                                 <ProtectedRoute allowedRoles={['distributor']}>
                                     <DistributorDashboard />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/distributor/merchant-onboarding"
+                            element={
+                                <ProtectedRoute allowedRoles={['distributor']}>
+                                    <DistributorMerchantOnboarding />
                                 </ProtectedRoute>
                             }
                         />

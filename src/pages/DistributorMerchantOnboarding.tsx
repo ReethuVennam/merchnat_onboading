@@ -123,12 +123,12 @@ export default function DistributorMerchantOnboarding() {
 
     const [onboardingData, setOnboardingData] = useState<OnboardingData>({
         fullName: queryParams.get('merchantName') || '',
-        mobileNumber: '',
+        mobileNumber: queryParams.get('mobileNumber') || '',
         email: merchantState.merchantEmail || '',
-        panNumber: '',
+        panNumber: queryParams.get('panNumber') || '',
         aadhaarNumber: '',
-        businessName: '',
-        gstNumber: '',
+        businessName: queryParams.get('businessName') || '',
+        gstNumber: queryParams.get('gstNumber') || '',
         hasGST: false,
         selectedProducts: [],
         settlementType: undefined,
@@ -139,10 +139,10 @@ export default function DistributorMerchantOnboarding() {
         currentStep: 0,
     });
 
-    // Guard: if no merchant state, go back to distributor dashboard
+    // Guard: if no merchant email, go back to distributor dashboard
     useEffect(() => {
-        if (!merchantState?.merchantUserId) {
-            toast({ title: 'Error', description: 'No merchant context found. Create a merchant first.', variant: 'destructive' });
+        if (!merchantState?.merchantEmail) {
+            toast({ title: 'Error', description: 'No merchant email found. Please provide merchant details.', variant: 'destructive' });
             navigate('/distributor');
         }
     }, [merchantState, navigate, toast]);
@@ -205,10 +205,48 @@ export default function DistributorMerchantOnboarding() {
 
     // ── Final Submit — writes to merchant's profile, not distributor ──────────
     const handleFinalSubmit = useCallback(async () => {
-        if (!merchantState?.merchantUserId || !merchantState?.merchantProfileId) return;
+        if (!merchantState?.merchantEmail) return;
 
         setIsSubmitting(true);
         try {
+            // If merchant not created yet, create it first
+            let merchantUserId = merchantState.merchantUserId;
+            let merchantProfileId = merchantState.merchantProfileId;
+
+            if (!merchantUserId || !merchantProfileId) {
+                console.log('Creating merchant account...');
+                
+                const createResponse = await fetch(`${API_BASE_URL}/distributor/create-merchant`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${await supabase.auth.getSession().then(s => s.data.session?.access_token || '')}`
+                    },
+                    body: JSON.stringify({
+                        email: merchantState.merchantEmail,
+                        password: merchantState.merchantPassword,
+                        fullName: onboardingData.fullName,
+                        mobileNumber: onboardingData.mobileNumber,
+                        distributorId: merchantState.distributorId,
+                        businessName: onboardingData.businessName || null,
+                        entityType: 'sole_proprietor',
+                        panNumber: onboardingData.panNumber || null,
+                        gstNumber: onboardingData.gstNumber || null,
+                    }),
+                });
+
+                if (!createResponse.ok) {
+                    const errorData = await createResponse.json();
+                    throw new Error(errorData.error?.message || 'Failed to create merchant account');
+                }
+
+                const createResult = await createResponse.json();
+                merchantUserId = createResult.data.merchantUserId;
+                merchantProfileId = createResult.data.merchantProfileId;
+                
+                console.log('Merchant created:', { merchantUserId, merchantProfileId });
+            }
+
             // Validate required fields
             const errors: string[] = [];
             if (!onboardingData.fullName)                           errors.push('Full name');
@@ -243,7 +281,7 @@ export default function DistributorMerchantOnboarding() {
                     'Authorization': `Bearer ${await supabase.auth.getSession().then(s => s.data.session?.access_token || '')}`
                 },
                 body: JSON.stringify({
-                    merchantProfileId: merchantState.merchantProfileId,
+                    merchantProfileId: merchantProfileId,
                     fullName: onboardingData.fullName,
                     mobileNumber: onboardingData.mobileNumber,
                     email: onboardingData.email,

@@ -249,7 +249,7 @@ export default function DistributorDashboard() {
                 return;
             }
 
-            // Call backend to create merchant auth user
+            // Get current distributor
             const { data: { user } } = await supabase.auth.getUser();
             if (!user?.id) {
                 toast({
@@ -260,70 +260,15 @@ export default function DistributorDashboard() {
                 return;
             }
 
-            const { data: sessionData } = await supabase.auth.getSession();
-            const token = sessionData?.session?.access_token;
-
-            if (!token) {
-                toast({
-                    title: 'Error',
-                    description: 'Session token not available',
-                    variant: 'destructive',
-                });
-                return;
-            }
-
-            const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8888';
-            const url = `${backendUrl}/api/distributor/create-merchant`;
-            
-            console.log('🔵 Creating merchant with:', {
-                backendUrl,
-                url,
-                email: createMerchantForm.email,
-                fullName: createMerchantForm.full_name,
-            });
-
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    email: createMerchantForm.email,
-                    password: providedPassword,
-                    fullName: createMerchantForm.full_name,
-                    mobileNumber: createMerchantForm.mobile_number,
-                    distributorId: user.id,
-                    businessName: createMerchantForm.business_name || null,
-                    entityType: createMerchantForm.entity_type,
-                    panNumber: createMerchantForm.pan_number || null,
-                    gstNumber: createMerchantForm.gst_number || null,
-                }),
-            });
-
-            console.log('✅ Response status:', response.status);
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                console.error('❌ API error:', errorData);
-                throw new Error(errorData.error?.message || `Failed to create merchant: ${response.statusText}`);
-            }
-
-            const result = await response.json();
-            const { merchantUserId, merchantProfileId } = result.data;
-
-            console.log('✅ Merchant created:', { merchantUserId, merchantProfileId });
-
             toast({
                 title: 'Success',
-                description: 'Merchant account created. Opening onboarding in a new tab...',
+                description: 'Opening merchant onboarding...',
             });
 
-            // Open merchant onboarding in a new tab
-            const onboardingUrl = `/distributor/merchant-onboarding?merchantUserId=${merchantUserId}&merchantEmail=${encodeURIComponent(createMerchantForm.email)}&merchantPassword=${encodeURIComponent(providedPassword)}&merchantName=${encodeURIComponent(createMerchantForm.full_name)}&distributorId=${user.id}&merchantProfileId=${merchantProfileId}`;
+            // Navigate to distributor merchant onboarding with form data
+            const onboardingUrl = `/distributor/merchant-onboarding?merchantEmail=${encodeURIComponent(createMerchantForm.email)}&merchantPassword=${encodeURIComponent(providedPassword)}&merchantName=${encodeURIComponent(createMerchantForm.full_name)}&distributorId=${user.id}&businessName=${encodeURIComponent(createMerchantForm.business_name || '')}&mobileNumber=${encodeURIComponent(createMerchantForm.mobile_number)}&entityType=${encodeURIComponent(createMerchantForm.entity_type)}&panNumber=${encodeURIComponent(createMerchantForm.pan_number || '')}&gstNumber=${encodeURIComponent(createMerchantForm.gst_number || '')}`;
             
-            // Open in new tab
-            window.open(onboardingUrl, '_blank');
+            navigate(onboardingUrl);
             
             // Reset form
             setCreateMerchantForm({
@@ -338,16 +283,12 @@ export default function DistributorDashboard() {
                 confirm_password: '',
             });
             
-            toast({
-                title: 'Info',
-                description: 'New tab opened with onboarding form. Complete it and return here.',
-            });
         } catch (error) {
-            console.error('❌ Error creating merchant:', error);
+            console.error('❌ Error:', error);
             const message = error instanceof Error ? error.message : String(error);
             toast({
                 title: 'Error',
-                description: message || 'Failed to create merchant. Make sure backend is running.',
+                description: message || 'An unexpected error occurred',
                 variant: 'destructive',
             });
         }
