@@ -337,7 +337,7 @@ React.useEffect(() => {
                     <CardContent className="space-y-3">
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Business Name:</span>
-                            <span className="font-medium">{data.business_name}</span>
+                            <span className="font-medium">{data.businessName}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">GST Number:</span>

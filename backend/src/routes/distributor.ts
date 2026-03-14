@@ -192,86 +192,192 @@ router.post(
             logger.info(`Distributor ${distributorId} creating merchant: ${email}`);
             console.log('✅ Authorization passed, creating auth user...');
 
-            // ── Step 1: Create auth user ─────────────────────────────
-            const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
-                email,
-                password,
-                email_confirm: true,          // skip email verification — distributor onboards them directly
-                user_metadata: {
-                    full_name: fullName,
-                    mobile_number: mobileNumber,
-                    role: 'merchant'
-                }
-            });
+            // ── Step 1: Try to create auth user, handle existing user ─────────────────
+            let merchantUserId: string;
+            let existingUser = false;
 
-            if (authError || !authData.user) {
-                console.error('❌ Failed to create merchant auth user:', authError);
-                throw new Error(authError?.message ?? 'Failed to create auth user');
-            }
-
-            const merchantUserId = authData.user.id;
-            console.log('✅ Auth user created:', merchantUserId);
-
-            // ── Step 2: Insert user_roles ────────────────────────────
-            const { error: roleError } = await adminClient
-                .from('user_roles')
-                .insert({ user_id: merchantUserId, role: 'merchant' });
-
-            if (roleError) {
-                // Rollback: delete the auth user we just created
-                await adminClient.auth.admin.deleteUser(merchantUserId);
-                throw new Error(`Failed to create user role: ${roleError.message}`);
-            }
-
-            // ── Step 3: Create merchant_profiles with distributor_id ─
-            const entity_type_to_use = normalizedEntityType || 'proprietorship';
-
-            console.log('📊 Creating merchant profile with:', {
-                entity_type: entity_type_to_use,
-                business_name: businessName,
-                pan_number: panNumber,
-            });
-
-            const { data: profileData, error: profileError } = await adminClient
-                .from('merchant_profiles')
-                .insert({
-                    user_id: merchantUserId,
-                    full_name: fullName,
-                    mobile_number: mobileNumber,
+            try {
+                const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
                     email,
-                    distributor_id: distributorId,
-                    business_name: businessName ?? null,
-                    entity_type: entity_type_to_use,
-                    pan_number: panNumber ?? null,
-                    gst_number: gstNumber ?? null,
-                    onboarding_status: 'pending'
-                })
-                .select('id')
-                .single();
+                    password,
+                    email_confirm: true,          // skip email verification — distributor onboards them directly
+                    user_metadata: {
+                        full_name: fullName,
+                        mobile_number: mobileNumber,
+                        role: 'merchant'
+                    }
+                });
 
-            if (profileError || !profileData) {
-                // Rollback: delete auth user
-                await adminClient.auth.admin.deleteUser(merchantUserId);
-
-                // If the DB returned a check constraint violation, return a friendly 400
-                const msg = profileError?.message ?? String(profileError);
-                if (msg && msg.includes('violates check constraint')) {
-                    console.error('❌ DB constraint violation creating merchant profile:', msg);
-                    res.status(400).json({
-                        success: false,
-                        error: {
-                            message: 'Invalid data for merchant profile',
-                            details: msg,
-                            hint: 'Check entityType value - it must match the allowed values in the database constraint'
-                        }
-                    });
-                    return;
+                if (authError || !authData.user) {
+                    throw new Error(authError?.message ?? 'Failed to create auth user');
                 }
 
-                throw new Error(`Failed to create merchant profile: ${msg}`);
+                merchantUserId = authData.user.id;
+                console.log('✅ Auth user created:', merchantUserId);
+            } catch (createError) {
+                // Check if it's because user already exists
+                const errorMessage = createError instanceof Error ? createError.message : String(createError);
+                if (errorMessage.includes('already been registered') || errorMessage.includes('already registered')) {
+                    // User exists, try to get their ID
+                    console.log('⚠️ User already exists, attempting to find their ID...');
+                    
+                    // Try to get user by email - this might not work, but let's try
+                    try {
+                        // Since getUserByEmail doesn't exist, we'll need to query the database
+                        const { data: userData, error: queryError } = await adminClient
+                            .from('auth.users')
+                            .select('id')
+                            .eq('email', email)
+                            .single();
+
+                        if (queryError || !userData) {
+                            throw new Error('User exists but could not retrieve their ID');
+                        }
+
+                        merchantUserId = userData.id;
+                        existingUser = true;
+                        console.log('✅ Found existing user ID:', merchantUserId);
+                    } catch (queryError) {
+                        console.error('❌ Could not find existing user:', queryError);
+                        throw new Error('A user with this email address already exists but could not be accessed');
+                    }
+                } else {
+                    throw createError;
+                }
             }
 
-            logger.info(`Merchant created successfully: user_id=${merchantUserId}, profile_id=${profileData.id}`);
+            // ── Step 2: Ensure user_roles exists (only for new users) ──
+            if (!existingUser) {
+                const { error: roleError } = await adminClient
+                    .from('user_roles')
+                    .insert({ user_id: merchantUserId, role: 'merchant' });
+
+                if (roleError) {
+                    // Rollback: delete the auth user we just created
+                    await adminClient.auth.admin.deleteUser(merchantUserId);
+                    throw new Error(`Failed to create user role: ${roleError.message}`);
+                }
+            }
+
+            // ── Step 3: Ensure merchant_profiles exists ─
+            let profileData: { id: string };
+
+            if (existingUser) {
+                // For existing users, check if profile exists
+                const { data: existingProfile, error: profileCheckError } = await adminClient
+                    .from('merchant_profiles')
+                    .select('id')
+                    .eq('user_id', merchantUserId)
+                    .eq('distributor_id', distributorId)
+                    .maybeSingle();
+
+                if (profileCheckError) {
+                    throw new Error(`Failed to check existing merchant profile: ${profileCheckError.message}`);
+                }
+
+                if (existingProfile) {
+                    profileData = existingProfile;
+                    console.log('✅ Existing merchant profile found:', profileData.id);
+                } else {
+                    // Create profile for existing user
+                    const entity_type_to_use = normalizedEntityType || 'proprietorship';
+                    console.log('📊 Creating merchant profile for existing user:', {
+                        entity_type: entity_type_to_use,
+                        business_name: businessName,
+                        pan_number: panNumber,
+                    });
+
+                    const { data: newProfileData, error: newProfileError } = await adminClient
+                        .from('merchant_profiles')
+                        .insert({
+                            user_id: merchantUserId,
+                            full_name: fullName,
+                            mobile_number: mobileNumber,
+                            email,
+                            distributor_id: distributorId,
+                            business_name: businessName ?? null,
+                            entity_type: entity_type_to_use,
+                            pan_number: panNumber ?? null,
+                            gst_number: gstNumber ?? null,
+                            onboarding_status: 'pending'
+                        })
+                        .select('id')
+                        .single();
+
+                    if (newProfileError || !newProfileData) {
+                        const msg = newProfileError?.message ?? String(newProfileError);
+                        if (msg && msg.includes('violates check constraint')) {
+                            console.error('❌ DB constraint violation creating merchant profile:', msg);
+                            res.status(400).json({
+                                success: false,
+                                error: {
+                                    message: 'Invalid data for merchant profile',
+                                    details: msg,
+                                    hint: 'Check entityType value - it must match the allowed values in the database constraint'
+                                }
+                            });
+                            return;
+                        }
+                        throw new Error(`Failed to create merchant profile: ${msg}`);
+                    }
+
+                    profileData = newProfileData;
+                    console.log('✅ Merchant profile created for existing user:', profileData.id);
+                }
+            } else {
+                // For new users, create profile
+                const entity_type_to_use = normalizedEntityType || 'proprietorship';
+
+                console.log('📊 Creating merchant profile with:', {
+                    entity_type: entity_type_to_use,
+                    business_name: businessName,
+                    pan_number: panNumber,
+                });
+
+                const { data: newProfileData, error: profileError } = await adminClient
+                    .from('merchant_profiles')
+                    .insert({
+                        user_id: merchantUserId,
+                        full_name: fullName,
+                        mobile_number: mobileNumber,
+                        email,
+                        distributor_id: distributorId,
+                        business_name: businessName ?? null,
+                        entity_type: entity_type_to_use,
+                        pan_number: panNumber ?? null,
+                        gst_number: gstNumber ?? null,
+                        onboarding_status: 'pending'
+                    })
+                    .select('id')
+                    .single();
+
+                if (profileError || !newProfileData) {
+                    // Rollback: delete auth user
+                    await adminClient.auth.admin.deleteUser(merchantUserId);
+
+                    // If the DB returned a check constraint violation, return a friendly 400
+                    const msg = profileError?.message ?? String(profileError);
+                    if (msg && msg.includes('violates check constraint')) {
+                        console.error('❌ DB constraint violation creating merchant profile:', msg);
+                        res.status(400).json({
+                            success: false,
+                            error: {
+                                message: 'Invalid data for merchant profile',
+                                details: msg,
+                                hint: 'Check entityType value - it must match the allowed values in the database constraint'
+                            }
+                        });
+                        return;
+                    }
+
+                    throw new Error(`Failed to create merchant profile: ${msg}`);
+                }
+
+                profileData = newProfileData;
+                console.log('✅ Merchant profile created:', profileData.id);
+            }
+
+            logger.info(`Merchant ${existingUser ? 'found' : 'created'} successfully: user_id=${merchantUserId}, profile_id=${profileData.id}`);
 
             res.status(201).json({
                 success: true,
@@ -279,7 +385,8 @@ router.post(
                     merchantUserId,
                     merchantProfileId: profileData.id,
                     email,
-                    message: 'Merchant account created successfully'
+                    existingUser,
+                    message: existingUser ? 'Existing merchant account found' : 'Merchant account created successfully'
                 }
             });
 
