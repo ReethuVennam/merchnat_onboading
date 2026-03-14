@@ -45,7 +45,7 @@ export const sendOtp = async (req: Request, res: Response, next: NextFunction) =
     // For development only: include the OTP so you can verify delivery without WhatsApp
     if (process.env.NODE_ENV === 'development' || process.env.DEBUG_INCLUDE_OTP === 'true') {
       respPayload.debugOtp = otp;
-      console.info('Debug OTP for', to, otp);
+      // Removed console.log for security - OTP should only be in WhatsApp
     }
 
     return res.json(respPayload);

@@ -85,7 +85,7 @@ export const FaceVoiceSync: React.FC<FaceVoiceSyncProps> = ({ onSuccess, onFailu
       }
 
       // use shared base URL helper (already ensures '/api' suffix)
-      const resp = await fetch(`${API_BASE_URL}/whatsapp/send-otp`, {
+      const resp = await fetch(`${API_BASE_URL}/api/whatsapp/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to })
@@ -167,7 +167,7 @@ export const FaceVoiceSync: React.FC<FaceVoiceSyncProps> = ({ onSuccess, onFailu
 
         // call backend verify
         try {
-          const verifyResp = await fetch(`${API_BASE_URL}/whatsapp/verify-otp`, {
+          const verifyResp = await fetch(`${API_BASE_URL}/api/whatsapp/verify-otp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ to: to, otp: cleaned })

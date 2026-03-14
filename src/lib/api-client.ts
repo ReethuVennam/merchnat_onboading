@@ -1,7 +1,7 @@
 ﻿import { supabase } from './supabase';
 import { MerchantFormData } from '@/schemas/merchantValidation';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8888';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8888';
 console.log('API_BASE_URL:', API_BASE_URL);
 
 class ApiClient {
