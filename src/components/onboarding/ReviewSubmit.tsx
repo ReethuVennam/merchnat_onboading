@@ -24,6 +24,8 @@ import { apiClient } from '@/lib/api-client';
 import { useToast } from '@/hooks/use-toast';
 import type { Product, SelectedProduct, CostSummary } from '@/types/products';
 import { formatPrice } from '@/types/products';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { supabase } from '@/lib/supabase';
 
 interface ReviewSubmitProps {
     data: OnboardingData;
@@ -32,7 +34,12 @@ interface ReviewSubmitProps {
     onPrev: () => void;
     isSubmitting?: boolean;
 }
-
+interface Ticket {
+  id: string;
+  title: string;
+  status: string;
+  created_at: string;
+}
 export const ReviewSubmit: React.FC<ReviewSubmitProps> = ({
     data,
     onDataChange,
@@ -41,6 +48,19 @@ export const ReviewSubmit: React.FC<ReviewSubmitProps> = ({
     isSubmitting = false,
 }) => {
     const { toast } = useToast();
+
+    const { user } = useAuth();
+const merchantId = user?.id;
+
+// Ticket states
+const [tickets, setTickets] = useState<Ticket[]>([]);
+const [ticketModalOpen, setTicketModalOpen] = useState(false);
+const [raiseModalOpen, setRaiseModalOpen] = useState(false);
+const [loadingTickets, setLoadingTickets] = useState(false);
+
+const [title, setTitle] = useState('');
+const [description, setDescription] = useState('');
+const [loading, setLoading] = useState(false);
 
     // Agreement dialog state
     const [showAgreementDialog, setShowAgreementDialog] = useState(false);
@@ -180,6 +200,86 @@ export const ReviewSubmit: React.FC<ReviewSubmitProps> = ({
             setHasReadAgreement(true);
         }
     };
+
+    const handleRaiseTicket = async () => {
+  if (!title || !description || !merchantId) return;
+
+  setLoading(true);
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    const response = await fetch(
+      'http://localhost:5000/api/tickets/merchant',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          merchant_id: merchantId,
+          title,
+          description,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      console.error('Ticket creation failed');
+      return;
+    }
+
+    setTitle('');
+    setDescription('');
+    setRaiseModalOpen(false);
+
+    fetchTickets();
+
+  } catch (error) {
+    console.error('Raise ticket error:', error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+const fetchTickets = async () => {
+  if (!merchantId) return;
+
+  setLoadingTickets(true);
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    const response = await fetch(
+      `http://localhost:5000/api/tickets/merchant/${merchantId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error('Failed to fetch tickets');
+      return;
+    }
+
+    const result = await response.json();
+
+    setTickets(result || []);
+
+  } catch (error) {
+    console.error('Fetch tickets error:', error);
+  } finally {
+    setLoadingTickets(false);
+  }
+};
+React.useEffect(() => {
+  if (ticketModalOpen) {
+    fetchTickets();
+  }
+}, [ticketModalOpen]);
 
     return (
         <div className="space-y-8">
@@ -551,7 +651,94 @@ export const ReviewSubmit: React.FC<ReviewSubmitProps> = ({
                 </DialogContent>
             </Dialog>
            
-            
+            {/* Ticket Buttons */}
+<div className="flex gap-4">
+  <Button onClick={() => setRaiseModalOpen(true)}>
+    Raise Support Ticket
+  </Button>
+
+  <Button onClick={() => setTicketModalOpen(true)}>
+    View My Tickets
+  </Button>
+</div>
+
+{/* Raise Ticket Modal */}
+{raiseModalOpen && (
+  <div className="p-6 bg-white border rounded-xl shadow-lg">
+    <h3 className="text-lg font-semibold mb-4">
+      Raise Support Ticket
+    </h3>
+
+    <input
+      type="text"
+      placeholder="Issue title"
+      value={title}
+      onChange={(e) => setTitle(e.target.value)}
+      className="w-full border px-3 py-2 rounded mb-3"
+    />
+
+    <textarea
+      placeholder="Describe your issue..."
+      value={description}
+      onChange={(e) => setDescription(e.target.value)}
+      className="w-full border px-3 py-2 rounded mb-3"
+    />
+
+    <div className="flex gap-3">
+      <Button onClick={handleRaiseTicket} disabled={loading}>
+        {loading ? 'Submitting...' : 'Submit Ticket'}
+      </Button>
+
+      <Button
+        variant="outline"
+        onClick={() => setRaiseModalOpen(false)}
+      >
+        Cancel
+      </Button>
+    </div>
+  </div>
+)}
+
+{/* View Tickets Modal */}
+{ticketModalOpen && (
+  <div className="p-6 bg-white border rounded-xl shadow-lg mt-6">
+    <h3 className="text-lg font-semibold mb-4">
+      My Support Tickets
+    </h3>
+
+    {loadingTickets ? (
+      <div>Loading...</div>
+    ) : tickets.length === 0 ? (
+      <div>No tickets raised yet.</div>
+    ) : (
+      <div className="space-y-3">
+        {tickets.map((ticket) => (
+          <div key={ticket.id} className="p-4 border rounded-lg">
+            <div className="font-semibold">
+              {ticket.title}
+            </div>
+
+            <div className="text-sm text-gray-500">
+              Status: {ticket.status}
+            </div>
+
+            <div className="text-xs text-gray-400">
+              ID: {ticket.id}
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+
+    <Button
+      className="mt-4"
+      variant="outline"
+      onClick={() => setTicketModalOpen(false)}
+    >
+      Close
+    </Button>
+  </div>
+)}
 
             {/* Navigation */}
             <div className="flex justify-between pt-6">
@@ -587,3 +774,5 @@ export const ReviewSubmit: React.FC<ReviewSubmitProps> = ({
 };
 
 export default ReviewSubmit;
+
+
