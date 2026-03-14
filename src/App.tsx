@@ -16,6 +16,7 @@ import DistributorDashboard from "./pages/DistributorDashboard";
 import MerchantDashboard from "./pages/MerchantDashboard";
 import InvitationAccept from "./pages/InvitationAccept";
 import IntegrationPaymentResult from "./pages/IntegrationPaymentResult";
+import Commercialstablepage from "./pages/Commercialstablepage";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => (
                         
                         {/* Payment Result Route - Can be public or protected based on your need */}
                         <Route path="/payment-result" element={<IntegrationPaymentResult />} />
+                        <Route path="/commercials" element={<Commercialstablepage />} />
 
                         {/* Merchant Routes */}
                         <Route
